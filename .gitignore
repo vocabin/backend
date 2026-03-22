@@ -1,0 +1,10 @@
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Frontend is a separate repository
+frontend/
+
+# OS
+.DS_Store
