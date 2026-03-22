@@ -1,0 +1,8 @@
+<svg width="1024" height="1024" viewBox="0 0 180 180" xmlns="http://www.w3.org/2000/svg">
+  <rect width="180" height="180" rx="40" fill="#1A1A2E"/>
+  <rect x="28" y="52" width="90" height="66" rx="10" fill="#2D5BE3" opacity="0.3"/>
+  <rect x="42" y="62" width="90" height="66" rx="10" fill="#2D5BE3" opacity="0.5"/>
+  <rect x="56" y="72" width="90" height="66" rx="10" fill="white"/>
+  <text x="101" y="112" text-anchor="middle" font-family="Georgia, serif" font-size="28" font-weight="700" fill="#1A1A2E">Aa</text>
+  <text x="101" y="130" text-anchor="middle" font-family="Georgia, serif" font-size="13" fill="#1A1A2E" opacity="0.45">가나다</text>
+</svg>
