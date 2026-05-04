@@ -20,9 +20,13 @@ public class WordController {
     @Operation(summary = "단어 목록 조회")
     @GetMapping("/api/word-sets/{wordSetId}/words")
     public List<WordResponse> getWords(@PathVariable Long wordSetId) {
-        return wordService.getWordList(wordSetId).stream()
-                .map(WordResponse::from)
-                .toList();
+        return WordResponse.fromList(wordService.getWordList(wordSetId));
+    }
+
+    @Operation(summary = "취약 단어 목록 조회", description = "오답 3회 이상인 단어를 오답 수 내림차순으로 반환합니다. wordSetId로 세트 필터 가능.")
+    @GetMapping("/api/words/weak")
+    public List<WordResponse> getWeakWords(@RequestParam(required = false) Long wordSetId) {
+        return WordResponse.fromList(wordService.getWeakWords(wordSetId));
     }
 
     @Operation(summary = "단어 수정")

@@ -4,6 +4,7 @@ import com.vocabin.domain.word.Word;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Schema(description = "단어 응답")
 public record WordResponse(
@@ -21,5 +22,9 @@ public record WordResponse(
                 word.getKorean(),
                 word.getCreatedAt()
         );
+    }
+
+    public static List<WordResponse> fromList(List<Word> words) {
+        return words.stream().map(WordResponse::from).toList();
     }
 }
