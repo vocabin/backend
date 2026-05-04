@@ -1,8 +1,10 @@
 package com.vocabin.application.service;
 
 import com.vocabin.application.port.out.MemberRepository;
+import com.vocabin.application.port.out.MemberSettingsRepository;
 import com.vocabin.common.port.ClockHolder;
 import com.vocabin.domain.member.Member;
+import com.vocabin.domain.member.MemberSettings;
 import com.vocabin.infrastructure.auth.JwtProvider;
 import com.vocabin.infrastructure.member.MemberEntity;
 import com.vocabin.infrastructure.member.MemberJpaRepository;
@@ -27,6 +29,7 @@ import java.util.UUID;
 public class AuthServiceImpl implements AuthService {
 
     private final MemberRepository memberRepository;
+    private final MemberSettingsRepository memberSettingsRepository;
     private final MemberJpaRepository memberJpaRepository;
     private final RefreshTokenJpaRepository refreshTokenJpaRepository;
     private final JwtProvider jwtProvider;
@@ -45,6 +48,7 @@ public class AuthServiceImpl implements AuthService {
         Member member = memberRepository.save(
                 Member.create(email, passwordEncoder.encode(rawPassword), nickname, clockHolder)
         );
+        memberSettingsRepository.save(MemberSettings.defaultFor(member.getId()));
         return issueTokenPair(member);
     }
 
