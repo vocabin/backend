@@ -6,6 +6,7 @@ import com.vocabin.infrastructure.word.WordJpaRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.NoSuchElementException;
 
 @Repository
@@ -14,6 +15,11 @@ public class StudyRecordRepositoryImpl implements StudyRecordRepository {
 
     private final StudyRecordJpaRepository studyRecordJpaRepository;
     private final WordJpaRepository wordJpaRepository;
+
+    @Override
+    public List<Long> findWeakWordIds(Long wordSetId) {
+        return studyRecordJpaRepository.findWeakWordIds(wordSetId);
+    }
 
     @Override
     public StudyRecord save(StudyRecord studyRecord) {

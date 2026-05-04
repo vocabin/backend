@@ -18,6 +18,13 @@ public class WordRepositoryImpl implements WordRepository {
     private final WordSetJpaRepository wordSetJpaRepository;
 
     @Override
+    public List<Word> findAllByIds(List<Long> ids) {
+        return wordJpaRepository.findAllByIdIn(ids).stream()
+                .map(WordEntity::toModel)
+                .toList();
+    }
+
+    @Override
     public List<Word> findAllByWordSetId(Long wordSetId) {
         return wordJpaRepository.findAllByWordSetId(wordSetId).stream()
                 .map(WordEntity::toModel)

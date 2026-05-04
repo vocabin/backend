@@ -10,4 +10,6 @@ public interface WordJpaRepository extends JpaRepository<WordEntity, Long> {
 
     @Query("SELECT w FROM WordEntity w WHERE w.wordSet.id = :wordSetId")
     List<WordEntity> findAllByWordSetId(@Param("wordSetId") Long wordSetId);
+
+    List<WordEntity> findAllByIdIn(List<Long> ids);
 }
