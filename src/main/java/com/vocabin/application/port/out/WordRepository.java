@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Optional;
 
 public interface WordRepository {
+    List<Word> findAll();
     List<Word> findAllByWordSetId(Long wordSetId);
     List<Word> findAllByIds(List<Long> ids);
     Optional<Word> findById(Long id);
