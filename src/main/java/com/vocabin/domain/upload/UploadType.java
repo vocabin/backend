@@ -2,5 +2,6 @@ package com.vocabin.domain.upload;
 
 public enum UploadType {
     QUIZLET,
-    TEMPLATE
+    TEMPLATE,
+    HACKERS_TOEIC
 }

@@ -40,4 +40,14 @@ public class WordUploadController {
         UploadResult result = wordUploadService.upload(wordSetId, UploadType.TEMPLATE, file);
         return ResponseEntity.ok(UploadResponse.from(result));
     }
+
+    @Operation(summary = "해커스 토익 단어암기장 PDF 업로드", description = "해커스 토익 800+ 단어암기장 PDF 파일을 업로드합니다.")
+    @PostMapping(value = "/hackers", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<UploadResponse> uploadHackers(
+            @PathVariable Long wordSetId,
+            @RequestPart MultipartFile file
+    ) throws IOException {
+        UploadResult result = wordUploadService.upload(wordSetId, UploadType.HACKERS_TOEIC, file);
+        return ResponseEntity.ok(UploadResponse.from(result));
+    }
 }
