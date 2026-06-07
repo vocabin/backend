@@ -77,7 +77,7 @@ public class AuthController {
         ResponseCookie.ResponseCookieBuilder builder = ResponseCookie.from(REFRESH_TOKEN_COOKIE, refreshToken)
                 .httpOnly(true)
                 .secure(true)
-                .path("/api/auth")
+                .path("/")
                 .maxAge(Duration.ofSeconds(REFRESH_TOKEN_EXPIRY_SECONDS))
                 .sameSite("None");
         if (!cookieDomain.isBlank()) {
@@ -90,7 +90,7 @@ public class AuthController {
         ResponseCookie.ResponseCookieBuilder builder = ResponseCookie.from(REFRESH_TOKEN_COOKIE, "")
                 .httpOnly(true)
                 .secure(true)
-                .path("/api/auth")
+                .path("/")
                 .maxAge(Duration.ZERO)
                 .sameSite("None");
         if (!cookieDomain.isBlank()) {
