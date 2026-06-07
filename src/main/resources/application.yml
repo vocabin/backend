@@ -4,6 +4,10 @@ spring:
     username: ${SPRING_DATASOURCE_USERNAME:vocabin}
     password: ${SPRING_DATASOURCE_PASSWORD:vocabin123}
     driver-class-name: org.mariadb.jdbc.Driver
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
   jpa:
     hibernate:
       ddl-auto: update
