@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
+import java.net.URI;
 import java.util.List;
 
 @Slf4j
@@ -59,7 +60,7 @@ public class AutoImportServiceImpl implements AutoImportService {
     @Override
     @Transactional
     public int fetchAndImport(Long memberId) {
-        String json = restTemplate.getForObject(QUIZLET_API_URL, String.class);
+        String json = restTemplate.getForObject(URI.create(QUIZLET_API_URL), String.class);
         if (json == null) {
             log.warn("Auto-import: empty response from external API");
             return 0;
