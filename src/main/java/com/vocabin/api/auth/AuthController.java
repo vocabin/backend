@@ -6,12 +6,16 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.Duration;
 import java.util.Arrays;
 
 @Tag(name = "Auth", description = "인증 API")
@@ -22,6 +26,9 @@ public class AuthController {
 
     private static final String REFRESH_TOKEN_COOKIE = "refresh_token";
     private static final int REFRESH_TOKEN_EXPIRY_SECONDS = 30 * 24 * 60 * 60; // 30일
+
+    @Value("${cookie.domain:}")
+    private String cookieDomain;
 
     private final AuthService authService;
 
@@ -67,21 +74,29 @@ public class AuthController {
     }
 
     private void setRefreshTokenCookie(HttpServletResponse response, String refreshToken) {
-        Cookie cookie = new Cookie(REFRESH_TOKEN_COOKIE, refreshToken);
-        cookie.setHttpOnly(true);
-        cookie.setSecure(true);
-        cookie.setPath("/api/auth");
-        cookie.setMaxAge(REFRESH_TOKEN_EXPIRY_SECONDS);
-        response.addCookie(cookie);
+        ResponseCookie.ResponseCookieBuilder builder = ResponseCookie.from(REFRESH_TOKEN_COOKIE, refreshToken)
+                .httpOnly(true)
+                .secure(true)
+                .path("/api/auth")
+                .maxAge(Duration.ofSeconds(REFRESH_TOKEN_EXPIRY_SECONDS))
+                .sameSite("None");
+        if (!cookieDomain.isBlank()) {
+            builder.domain(cookieDomain);
+        }
+        response.addHeader(HttpHeaders.SET_COOKIE, builder.build().toString());
     }
 
     private void deleteRefreshTokenCookie(HttpServletResponse response) {
-        Cookie cookie = new Cookie(REFRESH_TOKEN_COOKIE, "");
-        cookie.setHttpOnly(true);
-        cookie.setSecure(true);
-        cookie.setPath("/api/auth");
-        cookie.setMaxAge(0);
-        response.addCookie(cookie);
+        ResponseCookie.ResponseCookieBuilder builder = ResponseCookie.from(REFRESH_TOKEN_COOKIE, "")
+                .httpOnly(true)
+                .secure(true)
+                .path("/api/auth")
+                .maxAge(Duration.ZERO)
+                .sameSite("None");
+        if (!cookieDomain.isBlank()) {
+            builder.domain(cookieDomain);
+        }
+        response.addHeader(HttpHeaders.SET_COOKIE, builder.build().toString());
     }
 
     private String extractRefreshTokenFromCookie(HttpServletRequest request) {
