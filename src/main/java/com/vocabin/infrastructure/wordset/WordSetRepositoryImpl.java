@@ -15,8 +15,8 @@ public class WordSetRepositoryImpl implements WordSetRepository {
     private final WordSetJpaRepository wordSetJpaRepository;
 
     @Override
-    public List<WordSet> findAll() {
-        return wordSetJpaRepository.findAll().stream()
+    public List<WordSet> findAllByMemberId(Long memberId) {
+        return wordSetJpaRepository.findAllByMemberId(memberId).stream()
                 .map(WordSetEntity::toModel)
                 .toList();
     }

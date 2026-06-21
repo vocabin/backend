@@ -80,7 +80,7 @@ public class AutoImportServiceImpl implements AutoImportService {
             if (importedClassRepository.existsByMemberIdAndExternalClassId(memberId, qc.id())) continue;
 
             String setName = qc.classDate() != null ? qc.classDate() : qc.id();
-            WordSet wordSet = wordSetRepository.save(WordSet.create(setName, clockHolder));
+            WordSet wordSet = wordSetRepository.save(WordSet.create(setName, memberId, clockHolder));
 
             int wordCount = Math.min(qc.engQuizlet().size(), qc.korQuizlet().size());
             for (int i = 0; i < wordCount; i++) {

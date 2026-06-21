@@ -5,6 +5,6 @@ import com.vocabin.domain.wordset.WordSet;
 import java.util.List;
 
 public interface WordSetService {
-    List<WordSet> getWordSets();
-    WordSet createWordSet(String name);
+    List<WordSet> getWordSets(Long memberId);
+    WordSet createWordSet(String name, Long memberId);
 }

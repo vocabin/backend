@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.Optional;
 
 public interface WordSetRepository {
-    List<WordSet> findAll();
+    List<WordSet> findAllByMemberId(Long memberId);
     Optional<WordSet> findById(Long id);
     WordSet save(WordSet wordSet);
 }
