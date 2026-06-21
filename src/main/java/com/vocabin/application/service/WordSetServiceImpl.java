@@ -18,14 +18,14 @@ public class WordSetServiceImpl implements WordSetService {
     private final ClockHolder clockHolder;
 
     @Override
-    public List<WordSet> getWordSets() {
-        return wordSetRepository.findAll();
+    public List<WordSet> getWordSets(Long memberId) {
+        return wordSetRepository.findAllByMemberId(memberId);
     }
 
     @Override
     @Transactional
-    public WordSet createWordSet(String name) {
-        WordSet wordSet = WordSet.create(name, clockHolder);
+    public WordSet createWordSet(String name, Long memberId) {
+        WordSet wordSet = WordSet.create(name, memberId, clockHolder);
         return wordSetRepository.save(wordSet);
     }
 }

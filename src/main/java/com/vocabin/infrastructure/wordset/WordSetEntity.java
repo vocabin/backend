@@ -18,6 +18,9 @@ public class WordSetEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "member_id")
+    private Long memberId;
+
     @Column(nullable = false, length = 100)
     private String name;
 
@@ -27,6 +30,7 @@ public class WordSetEntity {
     public static WordSetEntity from(WordSet wordSet) {
         WordSetEntity entity = new WordSetEntity();
         entity.id = wordSet.getId();
+        entity.memberId = wordSet.getMemberId();
         entity.name = wordSet.getName();
         entity.createdAt = wordSet.getCreatedAt();
         return entity;
@@ -35,6 +39,7 @@ public class WordSetEntity {
     public WordSet toModel() {
         return WordSet.builder()
                 .id(id)
+                .memberId(memberId)
                 .name(name)
                 .createdAt(createdAt)
                 .build();

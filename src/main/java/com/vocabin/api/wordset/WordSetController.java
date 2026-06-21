@@ -22,8 +22,8 @@ public class WordSetController {
 
     @Operation(summary = "단어 세트 목록 조회")
     @GetMapping
-    public List<WordSetResponse> getWordSets() {
-        return wordSetService.getWordSets().stream()
+    public List<WordSetResponse> getWordSets(@RequestAttribute("memberId") Long memberId) {
+        return wordSetService.getWordSets(memberId).stream()
                 .map(WordSetResponse::from)
                 .toList();
     }
@@ -31,8 +31,10 @@ public class WordSetController {
     @Operation(summary = "단어 세트 생성")
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public WordSetResponse createWordSet(@RequestBody @Valid WordSetRequest request) {
-        return WordSetResponse.from(wordSetService.createWordSet(request.name()));
+    public WordSetResponse createWordSet(
+            @RequestAttribute("memberId") Long memberId,
+            @RequestBody @Valid WordSetRequest request) {
+        return WordSetResponse.from(wordSetService.createWordSet(request.name(), memberId));
     }
 
     @Operation(summary = "세트별 진행률 조회", description = "각 단어 세트의 총 단어 수와 학습한 단어 수를 반환합니다.")
