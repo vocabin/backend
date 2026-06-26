@@ -31,8 +31,8 @@ public class WordServiceImpl implements WordService {
                 .map(WordSet::getId).toList();
 
         // 1순위: 복습 예정 단어 (nextReviewAt <= 오늘) — 날짜 오름차순
-        List<Long> dueWordIds = reviewScheduleRepository.findDueWordIds(clockHolder.today());
-        Set<Long> scheduledWordIds = reviewScheduleRepository.findAllScheduledWordIds();
+        List<Long> dueWordIds = reviewScheduleRepository.findDueWordIds(clockHolder.today(), memberId);
+        Set<Long> scheduledWordIds = reviewScheduleRepository.findAllScheduledWordIds(memberId);
 
         List<Word> allWords = wordRepository.findAllByWordSetIds(wordSetIds);
         Map<Long, Word> wordById = allWords.stream().collect(Collectors.toMap(Word::getId, w -> w));
@@ -79,8 +79,8 @@ public class WordServiceImpl implements WordService {
     }
 
     @Override
-    public List<Word> getWeakWords(Long wordSetId) {
-        List<Long> wordIds = studyRecordRepository.findWeakWordIds(wordSetId);
+    public List<Word> getWeakWords(Long memberId, Long wordSetId) {
+        List<Long> wordIds = studyRecordRepository.findWeakWordIds(memberId, wordSetId);
         if (wordIds.isEmpty()) {
             return List.of();
         }

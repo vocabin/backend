@@ -39,8 +39,8 @@ public class WordSetController {
 
     @Operation(summary = "세트별 진행률 조회", description = "각 단어 세트의 총 단어 수와 학습한 단어 수를 반환합니다.")
     @GetMapping("/progress")
-    public List<WordSetProgressResponse> getProgress() {
-        return statsService.getWordSetProgress().stream()
+    public List<WordSetProgressResponse> getProgress(@RequestAttribute("memberId") Long memberId) {
+        return statsService.getWordSetProgress(memberId).stream()
                 .map(WordSetProgressResponse::from)
                 .toList();
     }

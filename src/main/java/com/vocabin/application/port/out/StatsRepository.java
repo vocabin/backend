@@ -7,11 +7,11 @@ import java.time.LocalDate;
 import java.util.List;
 
 public interface StatsRepository {
-    long countTotalWords();
-    long countTotalRecords();
-    long countCorrectRecords();
-    List<LocalDate> findDistinctStudyDates();
-    List<DailyStudyStats> findDailyStudyStats(LocalDate from, LocalDate to);
-    List<LocalDate> findStudyDatesInMonth(int year, int month);
-    List<WordSetProgress> findWordSetProgress();
+    long countTotalWords(Long memberId);
+    long countTotalRecords(Long memberId);
+    long countCorrectRecords(Long memberId);
+    List<LocalDate> findDistinctStudyDates(Long memberId);
+    List<DailyStudyStats> findDailyStudyStats(LocalDate from, LocalDate to, Long memberId);
+    List<LocalDate> findStudyDatesInMonth(int year, int month, Long memberId);
+    List<WordSetProgress> findWordSetProgress(Long memberId);
 }

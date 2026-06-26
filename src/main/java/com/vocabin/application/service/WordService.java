@@ -8,7 +8,7 @@ public interface WordService {
     List<Word> getDueWords(Long memberId);
     List<Word> getAllShuffled(Long memberId);
     List<Word> getWordList(Long wordSetId);
-    List<Word> getWeakWords(Long wordSetId);
+    List<Word> getWeakWords(Long memberId, Long wordSetId);
     Word updateWord(Long wordId, String english, String korean);
     void deleteWord(Long wordId);
 }

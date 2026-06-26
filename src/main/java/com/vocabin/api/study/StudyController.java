@@ -19,8 +19,10 @@ public class StudyController {
 
     @Operation(summary = "학습 결과 기록", description = "O/X 결과를 저장하고 SM-2 복습 일정을 갱신합니다.")
     @PostMapping("/records")
-    public ResponseEntity<StudyRecordResponse> record(@Valid @RequestBody StudyRecordRequest request) {
-        StudyRecord studyRecord = studyService.record(request.wordId(), request.mode(), request.correct());
+    public ResponseEntity<StudyRecordResponse> record(
+            @RequestAttribute("memberId") Long memberId,
+            @Valid @RequestBody StudyRecordRequest request) {
+        StudyRecord studyRecord = studyService.record(memberId, request.wordId(), request.mode(), request.correct());
         return ResponseEntity.ok(StudyRecordResponse.from(studyRecord));
     }
 }

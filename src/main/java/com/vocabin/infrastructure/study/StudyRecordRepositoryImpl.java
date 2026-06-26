@@ -17,8 +17,8 @@ public class StudyRecordRepositoryImpl implements StudyRecordRepository {
     private final WordJpaRepository wordJpaRepository;
 
     @Override
-    public List<Long> findWeakWordIds(Long wordSetId) {
-        return studyRecordJpaRepository.findWeakWordIds(wordSetId);
+    public List<Long> findWeakWordIds(Long memberId, Long wordSetId) {
+        return studyRecordJpaRepository.findWeakWordIds(memberId, wordSetId);
     }
 
     @Override

@@ -20,41 +20,72 @@ public class StatsRepositoryImpl implements StatsRepository {
     private EntityManager em;
 
     @Override
-    public long countTotalWords() {
-        return ((Number) em.createNativeQuery("SELECT COUNT(*) FROM word").getSingleResult()).longValue();
+    public long countTotalWords(Long memberId) {
+        return ((Number) em.createNativeQuery("""
+                SELECT COUNT(*) FROM word w
+                JOIN word_set ws ON ws.id = w.word_set_id
+                WHERE ws.member_id = :memberId
+                """)
+                .setParameter("memberId", memberId)
+                .getSingleResult()).longValue();
     }
 
     @Override
-    public long countTotalRecords() {
-        return ((Number) em.createNativeQuery("SELECT COUNT(*) FROM study_record").getSingleResult()).longValue();
+    public long countTotalRecords(Long memberId) {
+        return ((Number) em.createNativeQuery("""
+                SELECT COUNT(*) FROM study_record sr
+                JOIN word w ON w.id = sr.word_id
+                JOIN word_set ws ON ws.id = w.word_set_id
+                WHERE ws.member_id = :memberId
+                """)
+                .setParameter("memberId", memberId)
+                .getSingleResult()).longValue();
     }
 
     @Override
-    public long countCorrectRecords() {
-        return ((Number) em.createNativeQuery("SELECT COUNT(*) FROM study_record WHERE is_correct = 1").getSingleResult()).longValue();
+    public long countCorrectRecords(Long memberId) {
+        return ((Number) em.createNativeQuery("""
+                SELECT COUNT(*) FROM study_record sr
+                JOIN word w ON w.id = sr.word_id
+                JOIN word_set ws ON ws.id = w.word_set_id
+                WHERE ws.member_id = :memberId AND sr.is_correct = 1
+                """)
+                .setParameter("memberId", memberId)
+                .getSingleResult()).longValue();
     }
 
     @Override
     @SuppressWarnings("unchecked")
-    public List<LocalDate> findDistinctStudyDates() {
-        List<Date> dates = em.createNativeQuery(
-                "SELECT DISTINCT DATE(studied_at) FROM study_record ORDER BY DATE(studied_at) DESC"
-        ).getResultList();
+    public List<LocalDate> findDistinctStudyDates(Long memberId) {
+        List<Date> dates = em.createNativeQuery("""
+                SELECT DISTINCT DATE(sr.studied_at)
+                FROM study_record sr
+                JOIN word w ON w.id = sr.word_id
+                JOIN word_set ws ON ws.id = w.word_set_id
+                WHERE ws.member_id = :memberId
+                ORDER BY DATE(sr.studied_at) DESC
+                """)
+                .setParameter("memberId", memberId)
+                .getResultList();
         return dates.stream().map(Date::toLocalDate).toList();
     }
 
     @Override
     @SuppressWarnings("unchecked")
-    public List<DailyStudyStats> findDailyStudyStats(LocalDate from, LocalDate to) {
+    public List<DailyStudyStats> findDailyStudyStats(LocalDate from, LocalDate to, Long memberId) {
         List<Object[]> rows = em.createNativeQuery("""
-                SELECT DATE(studied_at),
+                SELECT DATE(sr.studied_at),
                        COUNT(*),
-                       SUM(CASE WHEN is_correct = 1 THEN 1 ELSE 0 END)
-                FROM study_record
-                WHERE DATE(studied_at) BETWEEN :from AND :to
-                GROUP BY DATE(studied_at)
-                ORDER BY DATE(studied_at)
+                       SUM(CASE WHEN sr.is_correct = 1 THEN 1 ELSE 0 END)
+                FROM study_record sr
+                JOIN word w ON w.id = sr.word_id
+                JOIN word_set ws ON ws.id = w.word_set_id
+                WHERE ws.member_id = :memberId
+                  AND DATE(sr.studied_at) BETWEEN :from AND :to
+                GROUP BY DATE(sr.studied_at)
+                ORDER BY DATE(sr.studied_at)
                 """)
+                .setParameter("memberId", memberId)
                 .setParameter("from", from)
                 .setParameter("to", to)
                 .getResultList();
@@ -70,13 +101,18 @@ public class StatsRepositoryImpl implements StatsRepository {
 
     @Override
     @SuppressWarnings("unchecked")
-    public List<LocalDate> findStudyDatesInMonth(int year, int month) {
+    public List<LocalDate> findStudyDatesInMonth(int year, int month, Long memberId) {
         List<Date> dates = em.createNativeQuery("""
-                SELECT DISTINCT DATE(studied_at)
-                FROM study_record
-                WHERE YEAR(studied_at) = :year AND MONTH(studied_at) = :month
-                ORDER BY DATE(studied_at)
+                SELECT DISTINCT DATE(sr.studied_at)
+                FROM study_record sr
+                JOIN word w ON w.id = sr.word_id
+                JOIN word_set ws ON ws.id = w.word_set_id
+                WHERE ws.member_id = :memberId
+                  AND YEAR(sr.studied_at) = :year
+                  AND MONTH(sr.studied_at) = :month
+                ORDER BY DATE(sr.studied_at)
                 """)
+                .setParameter("memberId", memberId)
                 .setParameter("year", year)
                 .setParameter("month", month)
                 .getResultList();
@@ -85,7 +121,7 @@ public class StatsRepositoryImpl implements StatsRepository {
 
     @Override
     @SuppressWarnings("unchecked")
-    public List<WordSetProgress> findWordSetProgress() {
+    public List<WordSetProgress> findWordSetProgress(Long memberId) {
         List<Object[]> rows = em.createNativeQuery("""
                 SELECT ws.id, ws.name,
                        COUNT(DISTINCT w.id),
@@ -93,9 +129,11 @@ public class StatsRepositoryImpl implements StatsRepository {
                 FROM word_set ws
                 LEFT JOIN word w ON w.word_set_id = ws.id
                 LEFT JOIN study_record sr ON sr.word_id = w.id
+                WHERE ws.member_id = :memberId
                 GROUP BY ws.id, ws.name
                 ORDER BY ws.id
                 """)
+                .setParameter("memberId", memberId)
                 .getResultList();
 
         return rows.stream()
