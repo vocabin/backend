@@ -25,6 +25,14 @@ public class WordRepositoryImpl implements WordRepository {
     }
 
     @Override
+    public List<Word> findAllByWordSetIds(List<Long> wordSetIds) {
+        if (wordSetIds.isEmpty()) return List.of();
+        return wordJpaRepository.findAllByWordSetIdIn(wordSetIds).stream()
+                .map(WordEntity::toModel)
+                .toList();
+    }
+
+    @Override
     public List<Word> findAllByIds(List<Long> ids) {
         return wordJpaRepository.findAllByIdIn(ids).stream()
                 .map(WordEntity::toModel)
