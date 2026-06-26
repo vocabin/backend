@@ -21,33 +21,33 @@ public class StatsServiceImpl implements StatsService {
     private final ClockHolder clockHolder;
 
     @Override
-    public StatsSummary getSummary() {
-        long totalWords = statsRepository.countTotalWords();
-        long totalRecords = statsRepository.countTotalRecords();
-        long correctRecords = statsRepository.countCorrectRecords();
+    public StatsSummary getSummary(Long memberId) {
+        long totalWords = statsRepository.countTotalWords(memberId);
+        long totalRecords = statsRepository.countTotalRecords(memberId);
+        long correctRecords = statsRepository.countCorrectRecords(memberId);
         double correctRate = totalRecords == 0 ? 0.0 : (double) correctRecords / totalRecords;
 
-        List<LocalDate> studyDates = statsRepository.findDistinctStudyDates();
+        List<LocalDate> studyDates = statsRepository.findDistinctStudyDates(memberId);
         int streakDays = calculateStreak(studyDates, clockHolder.today());
 
         return new StatsSummary(totalWords, correctRate, streakDays, totalRecords);
     }
 
     @Override
-    public List<DailyStudyStats> getWeeklyStats() {
+    public List<DailyStudyStats> getWeeklyStats(Long memberId) {
         LocalDate today = clockHolder.today();
         LocalDate monday = today.with(DayOfWeek.MONDAY);
-        return statsRepository.findDailyStudyStats(monday, today);
+        return statsRepository.findDailyStudyStats(monday, today, memberId);
     }
 
     @Override
-    public List<LocalDate> getCalendar(int year, int month) {
-        return statsRepository.findStudyDatesInMonth(year, month);
+    public List<LocalDate> getCalendar(int year, int month, Long memberId) {
+        return statsRepository.findStudyDatesInMonth(year, month, memberId);
     }
 
     @Override
-    public List<WordSetProgress> getWordSetProgress() {
-        return statsRepository.findWordSetProgress();
+    public List<WordSetProgress> getWordSetProgress(Long memberId) {
+        return statsRepository.findWordSetProgress(memberId);
     }
 
     private int calculateStreak(List<LocalDate> sortedDescDates, LocalDate today) {

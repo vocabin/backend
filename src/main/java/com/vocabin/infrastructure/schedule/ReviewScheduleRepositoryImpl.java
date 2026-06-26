@@ -33,12 +33,12 @@ public class ReviewScheduleRepositoryImpl implements ReviewScheduleRepository {
     }
 
     @Override
-    public List<Long> findDueWordIds(LocalDate today) {
-        return reviewScheduleJpaRepository.findDueWordIds(today);
+    public List<Long> findDueWordIds(LocalDate today, Long memberId) {
+        return reviewScheduleJpaRepository.findDueWordIds(today, memberId);
     }
 
     @Override
-    public Set<Long> findAllScheduledWordIds() {
-        return reviewScheduleJpaRepository.findAllScheduledWordIds();
+    public Set<Long> findAllScheduledWordIds(Long memberId) {
+        return reviewScheduleJpaRepository.findAllScheduledWordIds(memberId);
     }
 }

@@ -12,10 +12,11 @@ public interface StudyRecordJpaRepository extends JpaRepository<StudyRecordEntit
             SELECT sr.word.id
             FROM StudyRecordEntity sr
             WHERE sr.correct = false
+              AND sr.word.wordSet.memberId = :memberId
               AND (:wordSetId IS NULL OR sr.word.wordSet.id = :wordSetId)
             GROUP BY sr.word.id
             HAVING COUNT(sr) >= 3
             ORDER BY COUNT(sr) DESC
             """)
-    List<Long> findWeakWordIds(@Param("wordSetId") Long wordSetId);
+    List<Long> findWeakWordIds(@Param("memberId") Long memberId, @Param("wordSetId") Long wordSetId);
 }

@@ -10,6 +10,6 @@ import java.util.Set;
 public interface ReviewScheduleRepository {
     Optional<ReviewSchedule> findByWordId(Long wordId);
     ReviewSchedule save(ReviewSchedule reviewSchedule);
-    List<Long> findDueWordIds(LocalDate today);
-    Set<Long> findAllScheduledWordIds();
+    List<Long> findDueWordIds(LocalDate today, Long memberId);
+    Set<Long> findAllScheduledWordIds(Long memberId);
 }

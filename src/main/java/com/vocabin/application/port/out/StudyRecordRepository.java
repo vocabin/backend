@@ -6,5 +6,5 @@ import java.util.List;
 
 public interface StudyRecordRepository {
     StudyRecord save(StudyRecord studyRecord);
-    List<Long> findWeakWordIds(Long wordSetId);
+    List<Long> findWeakWordIds(Long memberId, Long wordSetId);
 }
