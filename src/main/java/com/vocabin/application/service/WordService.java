@@ -5,8 +5,8 @@ import com.vocabin.domain.word.Word;
 import java.util.List;
 
 public interface WordService {
-    List<Word> getDueWords();
-    List<Word> getAllShuffled();
+    List<Word> getDueWords(Long memberId);
+    List<Word> getAllShuffled(Long memberId);
     List<Word> getWordList(Long wordSetId);
     List<Word> getWeakWords(Long wordSetId);
     Word updateWord(Long wordId, String english, String korean);
