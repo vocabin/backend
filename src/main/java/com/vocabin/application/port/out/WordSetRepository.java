@@ -9,4 +9,5 @@ public interface WordSetRepository {
     List<WordSet> findAllByMemberId(Long memberId);
     Optional<WordSet> findById(Long id);
     WordSet save(WordSet wordSet);
+    void deleteById(Long id);
 }

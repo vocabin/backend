@@ -7,4 +7,5 @@ import java.util.List;
 public interface WordSetService {
     List<WordSet> getWordSets(Long memberId);
     WordSet createWordSet(String name, Long memberId);
+    void deleteWordSet(Long wordSetId, Long memberId);
 }
