@@ -17,6 +17,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class WordSetController {
 
+
     private final WordSetService wordSetService;
     private final StatsService statsService;
 
@@ -43,5 +44,14 @@ public class WordSetController {
         return statsService.getWordSetProgress(memberId).stream()
                 .map(WordSetProgressResponse::from)
                 .toList();
+    }
+
+    @Operation(summary = "단어 세트 삭제", description = "단어 세트와 포함된 모든 단어 및 학습 기록을 삭제합니다.")
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteWordSet(
+            @RequestAttribute("memberId") Long memberId,
+            @PathVariable Long id) {
+        wordSetService.deleteWordSet(id, memberId);
     }
 }

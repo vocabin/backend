@@ -31,4 +31,9 @@ public class WordSetRepositoryImpl implements WordSetRepository {
     public WordSet save(WordSet wordSet) {
         return wordSetJpaRepository.save(WordSetEntity.from(wordSet)).toModel();
     }
+
+    @Override
+    public void deleteById(Long id) {
+        wordSetJpaRepository.deleteById(id);
+    }
 }
