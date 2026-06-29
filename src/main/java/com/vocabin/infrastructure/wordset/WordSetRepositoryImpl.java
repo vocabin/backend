@@ -3,6 +3,7 @@ package com.vocabin.infrastructure.wordset;
 import com.vocabin.application.port.out.WordSetRepository;
 import com.vocabin.domain.wordset.WordSet;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -16,7 +17,7 @@ public class WordSetRepositoryImpl implements WordSetRepository {
 
     @Override
     public List<WordSet> findAll() {
-        return wordSetJpaRepository.findAll().stream()
+        return wordSetJpaRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt")).stream()
                 .map(WordSetEntity::toModel)
                 .toList();
     }
