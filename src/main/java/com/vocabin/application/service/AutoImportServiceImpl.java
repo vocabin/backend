@@ -26,7 +26,7 @@ import java.util.List;
 public class AutoImportServiceImpl implements AutoImportService {
 
     private static final String QUIZLET_API_URL =
-            "https://fluent-five.vercel.app/api/quizlet/student/%EC%9D%B4%EB%AF%BC%EC%9A%B0";
+            "https://app.davidsenglish.co.kr/api/quizlet/student/%EC%9D%B4%EB%AF%BC%EC%9A%B0";
 
     private final AutoImportConfigRepository configRepository;
     private final ImportedClassRepository importedClassRepository;
