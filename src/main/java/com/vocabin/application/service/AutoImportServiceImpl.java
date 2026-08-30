@@ -13,6 +13,12 @@ import com.vocabin.domain.word.Word;
 import com.vocabin.domain.wordset.WordSet;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
@@ -25,8 +31,18 @@ import java.util.List;
 @RequiredArgsConstructor
 public class AutoImportServiceImpl implements AutoImportService {
 
-    private static final String QUIZLET_API_URL =
-            "https://app.davidsenglish.co.kr/api/quizlet/student/%EC%9D%B4%EB%AF%BC%EC%9A%B0";
+    private static final String LOGIN_URL = "https://api.davidsenglish.co.kr/auth/session/login";
+    private static final String RECENT_CLASS_NOTE_URL =
+            "https://api.davidsenglish.co.kr/learning-records/class-notes/recent?studentProfileId=%s";
+    private static final String TODAY_QUIZ_URL =
+            "https://api.davidsenglish.co.kr/learning-records/class-notes/%s/today-quiz";
+    private static final String CSRF_TOKEN = "david-session-v1";
+
+    @Value("${davidsenglish.phone}")
+    private String phone;
+
+    @Value("${davidsenglish.password}")
+    private String password;
 
     private final AutoImportConfigRepository configRepository;
     private final ImportedClassRepository importedClassRepository;
@@ -60,51 +76,113 @@ public class AutoImportServiceImpl implements AutoImportService {
     @Override
     @Transactional
     public int fetchAndImport(Long memberId) {
-        String json = restTemplate.getForObject(URI.create(QUIZLET_API_URL), String.class);
-        if (json == null) {
-            log.warn("Auto-import: empty response from external API");
+        LoginResponse login = login();
+        if (login == null) {
+            log.warn("Auto-import: login failed");
             return 0;
         }
 
-        QuizletClass[] classes;
-        try {
-            classes = objectMapper.readValue(json, QuizletClass[].class);
-        } catch (Exception e) {
-            log.error("Auto-import: failed to parse response", e);
+        ClassNoteDto classNote = fetchRecentClassNote(login.accessToken(), login.user().studentProfileId());
+        if (classNote == null || classNote.id() == null) {
+            log.warn("Auto-import: no recent class note found");
             return 0;
         }
 
-        int imported = 0;
-        for (QuizletClass qc : classes) {
-            if (qc.id() == null || qc.engQuizlet() == null || qc.korQuizlet() == null) continue;
-            if (importedClassRepository.existsByMemberIdAndExternalClassId(memberId, qc.id())) continue;
-
-            String setName = qc.classDate() != null ? qc.classDate() : qc.id();
-            WordSet wordSet = wordSetRepository.save(WordSet.create(setName, memberId, clockHolder));
-
-            int wordCount = Math.min(qc.engQuizlet().size(), qc.korQuizlet().size());
-            for (int i = 0; i < wordCount; i++) {
-                String eng = qc.engQuizlet().get(i);
-                String kor = qc.korQuizlet().get(i);
-                if (eng == null || eng.isBlank() || kor == null || kor.isBlank()) continue;
-                wordRepository.save(Word.create(wordSet.getId(), eng.trim(), kor.trim(), clockHolder));
-            }
-
-            importedClassRepository.save(
-                    ImportedClass.create(memberId, qc.id(), wordSet.getId(), clockHolder.now()));
-            imported++;
-            log.info("Auto-import: imported class {} as WordSet {}", qc.id(), wordSet.getId());
+        if (importedClassRepository.existsByMemberIdAndExternalClassId(memberId, classNote.id())) {
+            return 0;
         }
 
-        return imported;
+        List<QuizItem> items = fetchTodayQuiz(login.accessToken(), classNote.id());
+        if (items == null || items.isEmpty()) {
+            log.warn("Auto-import: empty quiz items for classNote {}", classNote.id());
+            return 0;
+        }
+
+        String setName = classNote.classDate() != null ? classNote.classDate() : classNote.id();
+        WordSet wordSet = wordSetRepository.save(WordSet.create(setName, memberId, clockHolder));
+
+        for (QuizItem item : items) {
+            if (item.english() == null || item.english().isBlank() || item.korean() == null || item.korean().isBlank()) continue;
+            wordRepository.save(Word.create(wordSet.getId(), item.english().trim(), item.korean().trim(), clockHolder));
+        }
+
+        importedClassRepository.save(
+                ImportedClass.create(memberId, classNote.id(), wordSet.getId(), clockHolder.now()));
+        log.info("Auto-import: imported class {} as WordSet {}", classNote.id(), wordSet.getId());
+        return 1;
     }
 
-    // ── Internal DTO for external API ──────────────────────────────────────────
+    private LoginResponse login() {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.set("x-csrf-token", CSRF_TOKEN);
+        HttpEntity<LoginRequest> request = new HttpEntity<>(new LoginRequest(phone, password), headers);
+        try {
+            ResponseEntity<String> response = restTemplate.exchange(
+                    URI.create(LOGIN_URL), HttpMethod.POST, request, String.class);
+            return objectMapper.readValue(response.getBody(), LoginResponse.class);
+        } catch (Exception e) {
+            log.error("Auto-import: login failed", e);
+            return null;
+        }
+    }
 
-    private record QuizletClass(
-            @JsonProperty("_id") String id,
-            @JsonProperty("class_date") String classDate,
-            @JsonProperty("eng_quizlet") List<String> engQuizlet,
-            @JsonProperty("kor_quizlet") List<String> korQuizlet
+    private ClassNoteDto fetchRecentClassNote(String accessToken, String studentProfileId) {
+        HttpEntity<Void> request = new HttpEntity<>(authHeaders(accessToken));
+        try {
+            ResponseEntity<String> response = restTemplate.exchange(
+                    URI.create(String.format(RECENT_CLASS_NOTE_URL, studentProfileId)),
+                    HttpMethod.GET, request, String.class);
+            RecentClassNoteResponse body = objectMapper.readValue(response.getBody(), RecentClassNoteResponse.class);
+            return body.classNote();
+        } catch (Exception e) {
+            log.error("Auto-import: failed to fetch recent class note", e);
+            return null;
+        }
+    }
+
+    private List<QuizItem> fetchTodayQuiz(String accessToken, String classNoteId) {
+        HttpEntity<Void> request = new HttpEntity<>(authHeaders(accessToken));
+        try {
+            ResponseEntity<String> response = restTemplate.exchange(
+                    URI.create(String.format(TODAY_QUIZ_URL, classNoteId)),
+                    HttpMethod.GET, request, String.class);
+            TodayQuizResponse body = objectMapper.readValue(response.getBody(), TodayQuizResponse.class);
+            return body.items();
+        } catch (Exception e) {
+            log.error("Auto-import: failed to fetch today-quiz", e);
+            return null;
+        }
+    }
+
+    private HttpHeaders authHeaders(String accessToken) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(accessToken);
+        return headers;
+    }
+
+    // ── Internal DTOs for external API ──────────────────────────────────────────
+
+    private record LoginRequest(String phone, String password) {}
+
+    private record LoginResponse(
+            @JsonProperty("accessToken") String accessToken,
+            @JsonProperty("user") UserDto user
+    ) {}
+
+    private record UserDto(@JsonProperty("studentProfileId") String studentProfileId) {}
+
+    private record RecentClassNoteResponse(@JsonProperty("classNote") ClassNoteDto classNote) {}
+
+    private record ClassNoteDto(
+            @JsonProperty("id") String id,
+            @JsonProperty("classDate") String classDate
+    ) {}
+
+    private record TodayQuizResponse(@JsonProperty("items") List<QuizItem> items) {}
+
+    private record QuizItem(
+            @JsonProperty("korean") String korean,
+            @JsonProperty("english") String english
     ) {}
 }
