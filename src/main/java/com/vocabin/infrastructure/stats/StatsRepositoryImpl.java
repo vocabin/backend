@@ -131,7 +131,7 @@ public class StatsRepositoryImpl implements StatsRepository {
                 LEFT JOIN study_record sr ON sr.word_id = w.id
                 WHERE ws.member_id = :memberId
                 GROUP BY ws.id, ws.name
-                ORDER BY ws.id
+                ORDER BY ws.name DESC
                 """)
                 .setParameter("memberId", memberId)
                 .getResultList();
