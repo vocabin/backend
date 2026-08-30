@@ -38,6 +38,8 @@ public class AutoImportServiceImpl implements AutoImportService {
             "https://api.davidsenglish.co.kr/learning-records/quizlets/%s?studentProfileId=%s";
     private static final String CSRF_TOKEN = "david-session-v1";
     private static final String APP_ORIGIN = "https://app.davidsenglish.co.kr";
+    private static final String BROWSER_USER_AGENT =
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36";
 
     @Value("${davidsenglish.phone}")
     private String phone;
@@ -126,6 +128,7 @@ public class AutoImportServiceImpl implements AutoImportService {
         headers.set("x-csrf-token", CSRF_TOKEN);
         headers.set(HttpHeaders.ORIGIN, APP_ORIGIN);
         headers.set(HttpHeaders.REFERER, APP_ORIGIN + "/");
+        headers.set(HttpHeaders.USER_AGENT, BROWSER_USER_AGENT);
         HttpEntity<LoginRequest> request = new HttpEntity<>(new LoginRequest(phone, password), headers);
         try {
             ResponseEntity<String> response = restTemplate.exchange(
