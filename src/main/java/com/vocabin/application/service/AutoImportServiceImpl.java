@@ -32,11 +32,12 @@ import java.util.List;
 public class AutoImportServiceImpl implements AutoImportService {
 
     private static final String LOGIN_URL = "https://api.davidsenglish.co.kr/auth/session/login";
-    private static final String RECENT_CLASS_NOTE_URL =
-            "https://api.davidsenglish.co.kr/learning-records/class-notes/recent?studentProfileId=%s";
-    private static final String TODAY_QUIZ_URL =
-            "https://api.davidsenglish.co.kr/learning-records/class-notes/%s/today-quiz";
+    private static final String QUIZLET_SETS_URL =
+            "https://api.davidsenglish.co.kr/learning-records/quizlets?limit=100&studentProfileId=%s";
+    private static final String QUIZLET_SET_DETAIL_URL =
+            "https://api.davidsenglish.co.kr/learning-records/quizlets/%s?studentProfileId=%s";
     private static final String CSRF_TOKEN = "david-session-v1";
+    private static final String APP_ORIGIN = "https://app.davidsenglish.co.kr";
 
     @Value("${davidsenglish.phone}")
     private String phone;
@@ -81,41 +82,50 @@ public class AutoImportServiceImpl implements AutoImportService {
             log.warn("Auto-import: login failed");
             return 0;
         }
+        String accessToken = login.accessToken();
+        String studentProfileId = login.user().studentProfileId();
 
-        ClassNoteDto classNote = fetchRecentClassNote(login.accessToken(), login.user().studentProfileId());
-        if (classNote == null || classNote.id() == null) {
-            log.warn("Auto-import: no recent class note found");
+        List<QuizletSetSummary> quizletSets = fetchQuizletSets(accessToken, studentProfileId);
+        if (quizletSets == null || quizletSets.isEmpty()) {
+            log.warn("Auto-import: no quizlet sets found");
             return 0;
         }
 
-        if (importedClassRepository.existsByMemberIdAndExternalClassId(memberId, classNote.id())) {
-            return 0;
+        int imported = 0;
+        for (QuizletSetSummary summary : quizletSets) {
+            if (importedClassRepository.existsByMemberIdAndExternalClassId(memberId, summary.id())) continue;
+
+            QuizletSetDetail detail = fetchQuizletSetDetail(accessToken, studentProfileId, summary.id());
+            if (detail == null || detail.cards() == null) continue;
+
+            List<QuizletCard> favoriteCards = detail.cards().stream().filter(QuizletCard::favorite).toList();
+            if (favoriteCards.isEmpty()) continue;
+
+            String setName = summary.classDate() != null ? summary.classDate() : summary.id();
+            WordSet wordSet = wordSetRepository.save(WordSet.create(setName, memberId, clockHolder));
+
+            for (QuizletCard card : favoriteCards) {
+                if (card.englishText() == null || card.englishText().isBlank()
+                        || card.koreanText() == null || card.koreanText().isBlank()) continue;
+                wordRepository.save(Word.create(wordSet.getId(), card.englishText().trim(), card.koreanText().trim(), clockHolder));
+            }
+
+            importedClassRepository.save(
+                    ImportedClass.create(memberId, summary.id(), wordSet.getId(), clockHolder.now()));
+            imported++;
+            log.info("Auto-import: imported quizlet set {} ({} favorite cards) as WordSet {}",
+                    summary.id(), favoriteCards.size(), wordSet.getId());
         }
 
-        List<QuizItem> items = fetchTodayQuiz(login.accessToken(), classNote.id());
-        if (items == null || items.isEmpty()) {
-            log.warn("Auto-import: empty quiz items for classNote {}", classNote.id());
-            return 0;
-        }
-
-        String setName = classNote.classDate() != null ? classNote.classDate() : classNote.id();
-        WordSet wordSet = wordSetRepository.save(WordSet.create(setName, memberId, clockHolder));
-
-        for (QuizItem item : items) {
-            if (item.english() == null || item.english().isBlank() || item.korean() == null || item.korean().isBlank()) continue;
-            wordRepository.save(Word.create(wordSet.getId(), item.english().trim(), item.korean().trim(), clockHolder));
-        }
-
-        importedClassRepository.save(
-                ImportedClass.create(memberId, classNote.id(), wordSet.getId(), clockHolder.now()));
-        log.info("Auto-import: imported class {} as WordSet {}", classNote.id(), wordSet.getId());
-        return 1;
+        return imported;
     }
 
     private LoginResponse login() {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.set("x-csrf-token", CSRF_TOKEN);
+        headers.set(HttpHeaders.ORIGIN, APP_ORIGIN);
+        headers.set(HttpHeaders.REFERER, APP_ORIGIN + "/");
         HttpEntity<LoginRequest> request = new HttpEntity<>(new LoginRequest(phone, password), headers);
         try {
             ResponseEntity<String> response = restTemplate.exchange(
@@ -127,30 +137,30 @@ public class AutoImportServiceImpl implements AutoImportService {
         }
     }
 
-    private ClassNoteDto fetchRecentClassNote(String accessToken, String studentProfileId) {
+    private List<QuizletSetSummary> fetchQuizletSets(String accessToken, String studentProfileId) {
         HttpEntity<Void> request = new HttpEntity<>(authHeaders(accessToken));
         try {
             ResponseEntity<String> response = restTemplate.exchange(
-                    URI.create(String.format(RECENT_CLASS_NOTE_URL, studentProfileId)),
+                    URI.create(String.format(QUIZLET_SETS_URL, studentProfileId)),
                     HttpMethod.GET, request, String.class);
-            RecentClassNoteResponse body = objectMapper.readValue(response.getBody(), RecentClassNoteResponse.class);
-            return body.classNote();
+            QuizletSetsResponse body = objectMapper.readValue(response.getBody(), QuizletSetsResponse.class);
+            return body.quizletSets();
         } catch (Exception e) {
-            log.error("Auto-import: failed to fetch recent class note", e);
+            log.error("Auto-import: failed to fetch quizlet sets", e);
             return null;
         }
     }
 
-    private List<QuizItem> fetchTodayQuiz(String accessToken, String classNoteId) {
+    private QuizletSetDetail fetchQuizletSetDetail(String accessToken, String studentProfileId, String quizletSetId) {
         HttpEntity<Void> request = new HttpEntity<>(authHeaders(accessToken));
         try {
             ResponseEntity<String> response = restTemplate.exchange(
-                    URI.create(String.format(TODAY_QUIZ_URL, classNoteId)),
+                    URI.create(String.format(QUIZLET_SET_DETAIL_URL, quizletSetId, studentProfileId)),
                     HttpMethod.GET, request, String.class);
-            TodayQuizResponse body = objectMapper.readValue(response.getBody(), TodayQuizResponse.class);
-            return body.items();
+            QuizletSetDetailResponse body = objectMapper.readValue(response.getBody(), QuizletSetDetailResponse.class);
+            return body.quizletSet();
         } catch (Exception e) {
-            log.error("Auto-import: failed to fetch today-quiz", e);
+            log.error("Auto-import: failed to fetch quizlet set detail for {}", quizletSetId, e);
             return null;
         }
     }
@@ -172,17 +182,20 @@ public class AutoImportServiceImpl implements AutoImportService {
 
     private record UserDto(@JsonProperty("studentProfileId") String studentProfileId) {}
 
-    private record RecentClassNoteResponse(@JsonProperty("classNote") ClassNoteDto classNote) {}
+    private record QuizletSetsResponse(@JsonProperty("quizletSets") List<QuizletSetSummary> quizletSets) {}
 
-    private record ClassNoteDto(
+    private record QuizletSetSummary(
             @JsonProperty("id") String id,
             @JsonProperty("classDate") String classDate
     ) {}
 
-    private record TodayQuizResponse(@JsonProperty("items") List<QuizItem> items) {}
+    private record QuizletSetDetailResponse(@JsonProperty("quizletSet") QuizletSetDetail quizletSet) {}
 
-    private record QuizItem(
-            @JsonProperty("korean") String korean,
-            @JsonProperty("english") String english
+    private record QuizletSetDetail(@JsonProperty("cards") List<QuizletCard> cards) {}
+
+    private record QuizletCard(
+            @JsonProperty("englishText") String englishText,
+            @JsonProperty("koreanText") String koreanText,
+            @JsonProperty("favorite") boolean favorite
     ) {}
 }
