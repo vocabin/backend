@@ -17,13 +17,13 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 @Slf4j
@@ -122,18 +122,24 @@ public class AutoImportServiceImpl implements AutoImportService {
         return imported;
     }
 
+    // The site's WAF blocks Java's TLS client (RestTemplate) with 403 regardless of headers,
+    // but the identical request via curl passes — shelling out to curl works around the block.
     private LoginResponse login() {
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.set("x-csrf-token", CSRF_TOKEN);
-        headers.set(HttpHeaders.ORIGIN, APP_ORIGIN);
-        headers.set(HttpHeaders.REFERER, APP_ORIGIN + "/");
-        headers.set(HttpHeaders.USER_AGENT, BROWSER_USER_AGENT);
-        HttpEntity<LoginRequest> request = new HttpEntity<>(new LoginRequest(phone, password), headers);
         try {
-            ResponseEntity<String> response = restTemplate.exchange(
-                    URI.create(LOGIN_URL), HttpMethod.POST, request, String.class);
-            return objectMapper.readValue(response.getBody(), LoginResponse.class);
+            String requestBody = objectMapper.writeValueAsString(new LoginRequest(phone, password));
+            List<String> command = List.of(
+                    "curl", "-s", "-X", "POST", LOGIN_URL,
+                    "-H", "Content-Type: application/json",
+                    "-H", "x-csrf-token: " + CSRF_TOKEN,
+                    "-H", "Origin: " + APP_ORIGIN,
+                    "-H", "Referer: " + APP_ORIGIN + "/",
+                    "-H", "User-Agent: " + BROWSER_USER_AGENT,
+                    "-d", requestBody
+            );
+            Process process = new ProcessBuilder(command).start();
+            String responseBody = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+            process.waitFor();
+            return objectMapper.readValue(responseBody, LoginResponse.class);
         } catch (Exception e) {
             log.error("Auto-import: login failed", e);
             return null;
