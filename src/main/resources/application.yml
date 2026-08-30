@@ -27,6 +27,10 @@ cors:
 cookie:
   domain: ${COOKIE_DOMAIN:}
 
+davidsenglish:
+  phone: ${DAVIDSENGLISH_PHONE:}
+  password: ${DAVIDSENGLISH_PASSWORD:}
+
 springdoc:
   swagger-ui:
     path: /swagger-ui.html
