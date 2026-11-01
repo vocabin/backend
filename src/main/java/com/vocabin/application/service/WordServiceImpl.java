@@ -7,6 +7,7 @@ import com.vocabin.application.port.out.WordSetRepository;
 import com.vocabin.common.port.ClockHolder;
 import com.vocabin.domain.word.Word;
 import com.vocabin.domain.wordset.WordSet;
+import com.vocabin.domain.wordset.WordSetType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,7 +28,7 @@ public class WordServiceImpl implements WordService {
 
     @Override
     public List<Word> getDueWords(Long memberId) {
-        List<Long> wordSetIds = wordSetRepository.findAllByMemberId(memberId).stream()
+        List<Long> wordSetIds = wordSetRepository.findAllByMemberIdAndType(memberId, WordSetType.REGULAR).stream()
                 .map(WordSet::getId).toList();
 
         // 1순위: 복습 예정 단어 (nextReviewAt <= 오늘) — 날짜 오름차순
@@ -64,7 +65,7 @@ public class WordServiceImpl implements WordService {
 
     @Override
     public List<Word> getAllShuffled(Long memberId) {
-        List<Long> wordSetIds = wordSetRepository.findAllByMemberId(memberId).stream()
+        List<Long> wordSetIds = wordSetRepository.findAllByMemberIdAndType(memberId, WordSetType.REGULAR).stream()
                 .map(WordSet::getId).toList();
         List<Word> words = new ArrayList<>(wordRepository.findAllByWordSetIds(wordSetIds));
         Collections.shuffle(words);

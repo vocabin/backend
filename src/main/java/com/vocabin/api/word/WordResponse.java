@@ -12,6 +12,7 @@ public record WordResponse(
         @Schema(description = "단어 세트 ID") Long wordSetId,
         @Schema(description = "영어") String english,
         @Schema(description = "한국어") String korean,
+        @Schema(description = "메모 (포켓 전용, 없으면 null)") String memo,
         @Schema(description = "생성 시간") LocalDateTime createdAt
 ) {
     public static WordResponse from(Word word) {
@@ -20,6 +21,7 @@ public record WordResponse(
                 word.getWordSetId(),
                 word.getEnglish(),
                 word.getKorean(),
+                word.getMemo(),
                 word.getCreatedAt()
         );
     }

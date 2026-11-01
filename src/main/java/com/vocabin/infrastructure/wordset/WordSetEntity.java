@@ -1,6 +1,7 @@
 package com.vocabin.infrastructure.wordset;
 
 import com.vocabin.domain.wordset.WordSet;
+import com.vocabin.domain.wordset.WordSetType;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -24,6 +25,10 @@ public class WordSetEntity {
     @Column(nullable = false, length = 100)
     private String name;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, columnDefinition = "VARCHAR(20) NOT NULL DEFAULT 'REGULAR'")
+    private WordSetType type;
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -32,6 +37,7 @@ public class WordSetEntity {
         entity.id = wordSet.getId();
         entity.memberId = wordSet.getMemberId();
         entity.name = wordSet.getName();
+        entity.type = wordSet.getType();
         entity.createdAt = wordSet.getCreatedAt();
         return entity;
     }
@@ -41,6 +47,7 @@ public class WordSetEntity {
                 .id(id)
                 .memberId(memberId)
                 .name(name)
+                .type(type)
                 .createdAt(createdAt)
                 .build();
     }

@@ -12,6 +12,9 @@ import java.util.Set;
 public interface ReviewScheduleJpaRepository extends JpaRepository<ReviewScheduleEntity, Long> {
     Optional<ReviewScheduleEntity> findByWordId(Long wordId);
 
+    @Query("SELECT rs FROM ReviewScheduleEntity rs WHERE rs.word.id IN :wordIds")
+    List<ReviewScheduleEntity> findAllByWordIdIn(@Param("wordIds") List<Long> wordIds);
+
     @Query("SELECT rs.word.id FROM ReviewScheduleEntity rs WHERE rs.nextReviewAt <= :today AND rs.word.wordSet.memberId = :memberId ORDER BY rs.nextReviewAt ASC")
     List<Long> findDueWordIds(@Param("today") LocalDate today, @Param("memberId") Long memberId);
 

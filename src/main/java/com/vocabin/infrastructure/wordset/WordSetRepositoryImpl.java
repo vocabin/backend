@@ -2,6 +2,7 @@ package com.vocabin.infrastructure.wordset;
 
 import com.vocabin.application.port.out.WordSetRepository;
 import com.vocabin.domain.wordset.WordSet;
+import com.vocabin.domain.wordset.WordSetType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
@@ -15,8 +16,8 @@ public class WordSetRepositoryImpl implements WordSetRepository {
     private final WordSetJpaRepository wordSetJpaRepository;
 
     @Override
-    public List<WordSet> findAllByMemberId(Long memberId) {
-        return wordSetJpaRepository.findAllByMemberIdOrderByNameDesc(memberId).stream()
+    public List<WordSet> findAllByMemberIdAndType(Long memberId, WordSetType type) {
+        return wordSetJpaRepository.findAllByMemberIdAndTypeOrderByNameDesc(memberId, type).stream()
                 .map(WordSetEntity::toModel)
                 .toList();
     }
