@@ -30,6 +30,7 @@ cookie:
 davidsenglish:
   phone: ${DAVIDSENGLISH_PHONE:}
   password: ${DAVIDSENGLISH_PASSWORD:}
+  pocket-import-email: ${DAVIDSENGLISH_POCKET_IMPORT_EMAIL:}
 
 springdoc:
   swagger-ui:

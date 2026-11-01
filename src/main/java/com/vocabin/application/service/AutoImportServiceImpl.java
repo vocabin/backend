@@ -36,6 +36,10 @@ public class AutoImportServiceImpl implements AutoImportService {
             "https://api.davidsenglish.co.kr/learning-records/quizlets?limit=100&studentProfileId=%s";
     private static final String QUIZLET_SET_DETAIL_URL =
             "https://api.davidsenglish.co.kr/learning-records/quizlets/%s?studentProfileId=%s";
+    private static final String DIARY_SUMMARIES_URL =
+            "https://api.davidsenglish.co.kr/learning-records/diaries/summaries?limit=100&studentProfileId=%s";
+    private static final String DIARY_DETAIL_URL =
+            "https://api.davidsenglish.co.kr/learning-records/diaries/%s";
     private static final String CSRF_TOKEN = "david-session-v1";
     private static final String APP_ORIGIN = "https://app.davidsenglish.co.kr";
     private static final String BROWSER_USER_AGENT =
@@ -51,6 +55,7 @@ public class AutoImportServiceImpl implements AutoImportService {
     private final ImportedClassRepository importedClassRepository;
     private final WordSetRepository wordSetRepository;
     private final WordRepository wordRepository;
+    private final PocketExpressionImporter pocketExpressionImporter;
     private final ClockHolder clockHolder;
     private final ObjectMapper objectMapper;
     private final RestTemplate restTemplate;
@@ -73,7 +78,10 @@ public class AutoImportServiceImpl implements AutoImportService {
     @Override
     @Transactional(readOnly = true)
     public List<ImportedClass> getHistory(Long memberId) {
-        return importedClassRepository.findAllByMemberId(memberId);
+        // Diary (pocket) imports are internal bookkeeping, not word sets to show in the history
+        return importedClassRepository.findAllByMemberId(memberId).stream()
+                .filter(imported -> !imported.getExternalClassId().startsWith(PocketExpressionImporter.EXTERNAL_ID_PREFIX))
+                .toList();
     }
 
     @Override
@@ -87,6 +95,12 @@ public class AutoImportServiceImpl implements AutoImportService {
         String accessToken = login.accessToken();
         String studentProfileId = login.user().studentProfileId();
 
+        int imported = importQuizletSets(memberId, accessToken, studentProfileId);
+        imported += importDiaryExpressions(memberId, accessToken, studentProfileId);
+        return imported;
+    }
+
+    private int importQuizletSets(Long memberId, String accessToken, String studentProfileId) {
         List<QuizletSetSummary> quizletSets = fetchQuizletSets(accessToken, studentProfileId);
         if (quizletSets == null || quizletSets.isEmpty()) {
             log.warn("Auto-import: no quizlet sets found");
@@ -174,6 +188,53 @@ public class AutoImportServiceImpl implements AutoImportService {
         }
     }
 
+    // A failure here must not affect the quizlet import that already succeeded
+    private int importDiaryExpressions(Long memberId, String accessToken, String studentProfileId) {
+        try {
+            return pocketExpressionImporter.importNewDiaries(
+                    memberId,
+                    () -> fetchDiarySummaries(accessToken, studentProfileId),
+                    diaryId -> fetchDiaryExpressions(accessToken, diaryId));
+        } catch (Exception e) {
+            log.error("Auto-import: pocket expression import failed for memberId={}", memberId, e);
+            return 0;
+        }
+    }
+
+    private List<PocketExpressionImporter.DiarySummary> fetchDiarySummaries(String accessToken, String studentProfileId) {
+        HttpEntity<Void> request = new HttpEntity<>(authHeaders(accessToken));
+        try {
+            ResponseEntity<String> response = restTemplate.exchange(
+                    URI.create(String.format(DIARY_SUMMARIES_URL, studentProfileId)),
+                    HttpMethod.GET, request, String.class);
+            DiarySummariesResponse body = objectMapper.readValue(response.getBody(), DiarySummariesResponse.class);
+            if (body.diaryEntries() == null) return null;
+            return body.diaryEntries().stream()
+                    .map(entry -> new PocketExpressionImporter.DiarySummary(entry.id(), entry.classDate()))
+                    .toList();
+        } catch (Exception e) {
+            log.error("Auto-import: failed to fetch diary summaries", e);
+            return null;
+        }
+    }
+
+    // Returns null when the expressions are missing so the diary is retried on the next run
+    private String fetchDiaryExpressions(String accessToken, String diaryId) {
+        HttpEntity<Void> request = new HttpEntity<>(authHeaders(accessToken));
+        try {
+            ResponseEntity<String> response = restTemplate.exchange(
+                    URI.create(String.format(DIARY_DETAIL_URL, diaryId)),
+                    HttpMethod.GET, request, String.class);
+            DiaryDetailResponse body = objectMapper.readValue(response.getBody(), DiaryDetailResponse.class);
+            if (body.diaryEntry() == null) return null;
+            String expressions = body.diaryEntry().expressions();
+            return expressions == null || expressions.isBlank() ? null : expressions;
+        } catch (Exception e) {
+            log.error("Auto-import: failed to fetch diary detail for {}", diaryId, e);
+            return null;
+        }
+    }
+
     private HttpHeaders authHeaders(String accessToken) {
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(accessToken);
@@ -207,4 +268,15 @@ public class AutoImportServiceImpl implements AutoImportService {
             @JsonProperty("koreanText") String koreanText,
             @JsonProperty("favorite") boolean favorite
     ) {}
+
+    private record DiarySummariesResponse(@JsonProperty("diaryEntries") List<DiarySummaryDto> diaryEntries) {}
+
+    private record DiarySummaryDto(
+            @JsonProperty("id") String id,
+            @JsonProperty("classDate") String classDate
+    ) {}
+
+    private record DiaryDetailResponse(@JsonProperty("diaryEntry") DiaryDetail diaryEntry) {}
+
+    private record DiaryDetail(@JsonProperty("expressions") String expressions) {}
 }
