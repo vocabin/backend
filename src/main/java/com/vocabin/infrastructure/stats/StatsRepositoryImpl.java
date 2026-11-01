@@ -130,8 +130,8 @@ public class StatsRepositoryImpl implements StatsRepository {
                 LEFT JOIN word w ON w.word_set_id = ws.id
                 LEFT JOIN study_record sr ON sr.word_id = w.id
                 WHERE ws.member_id = :memberId AND ws.type = 'REGULAR'
-                GROUP BY ws.id, ws.name
-                ORDER BY ws.name DESC
+                GROUP BY ws.id, ws.name, ws.created_at
+                ORDER BY ws.created_at DESC, ws.id DESC
                 """)
                 .setParameter("memberId", memberId)
                 .getResultList();
