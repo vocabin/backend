@@ -26,6 +26,14 @@ public class ReviewScheduleRepositoryImpl implements ReviewScheduleRepository {
     }
 
     @Override
+    public List<ReviewSchedule> findAllByWordIds(List<Long> wordIds) {
+        if (wordIds.isEmpty()) return List.of();
+        return reviewScheduleJpaRepository.findAllByWordIdIn(wordIds).stream()
+                .map(ReviewScheduleEntity::toModel)
+                .toList();
+    }
+
+    @Override
     public ReviewSchedule save(ReviewSchedule reviewSchedule) {
         var wordEntity = wordJpaRepository.findById(reviewSchedule.getWordId())
                 .orElseThrow(() -> new NoSuchElementException("단어를 찾을 수 없습니다. id=" + reviewSchedule.getWordId()));

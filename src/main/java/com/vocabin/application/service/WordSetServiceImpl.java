@@ -3,6 +3,7 @@ package com.vocabin.application.service;
 import com.vocabin.application.port.out.WordSetRepository;
 import com.vocabin.common.port.ClockHolder;
 import com.vocabin.domain.wordset.WordSet;
+import com.vocabin.domain.wordset.WordSetType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -21,7 +22,7 @@ public class WordSetServiceImpl implements WordSetService {
 
     @Override
     public List<WordSet> getWordSets(Long memberId) {
-        return wordSetRepository.findAllByMemberId(memberId);
+        return wordSetRepository.findAllByMemberIdAndType(memberId, WordSetType.REGULAR);
     }
 
     @Override

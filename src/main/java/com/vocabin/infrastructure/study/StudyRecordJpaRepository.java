@@ -13,6 +13,7 @@ public interface StudyRecordJpaRepository extends JpaRepository<StudyRecordEntit
             FROM StudyRecordEntity sr
             WHERE sr.correct = false
               AND sr.word.wordSet.memberId = :memberId
+              AND sr.word.wordSet.type = com.vocabin.domain.wordset.WordSetType.REGULAR
               AND (:wordSetId IS NULL OR sr.word.wordSet.id = :wordSetId)
             GROUP BY sr.word.id
             HAVING COUNT(sr) >= 3

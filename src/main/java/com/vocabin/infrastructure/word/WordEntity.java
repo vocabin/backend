@@ -29,6 +29,9 @@ public class WordEntity {
     @Column(nullable = false, length = 500)
     private String korean;
 
+    @Column(length = 500)
+    private String memo;
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -38,6 +41,7 @@ public class WordEntity {
         entity.wordSet = wordSetEntity;
         entity.english = word.getEnglish();
         entity.korean = word.getKorean();
+        entity.memo = word.getMemo();
         entity.createdAt = word.getCreatedAt();
         return entity;
     }
@@ -48,6 +52,7 @@ public class WordEntity {
                 .wordSetId(wordSet.getId())
                 .english(english)
                 .korean(korean)
+                .memo(memo)
                 .createdAt(createdAt)
                 .build();
     }

@@ -24,7 +24,7 @@ public class StatsRepositoryImpl implements StatsRepository {
         return ((Number) em.createNativeQuery("""
                 SELECT COUNT(*) FROM word w
                 JOIN word_set ws ON ws.id = w.word_set_id
-                WHERE ws.member_id = :memberId
+                WHERE ws.member_id = :memberId AND ws.type = 'REGULAR'
                 """)
                 .setParameter("memberId", memberId)
                 .getSingleResult()).longValue();
@@ -129,7 +129,7 @@ public class StatsRepositoryImpl implements StatsRepository {
                 FROM word_set ws
                 LEFT JOIN word w ON w.word_set_id = ws.id
                 LEFT JOIN study_record sr ON sr.word_id = w.id
-                WHERE ws.member_id = :memberId
+                WHERE ws.member_id = :memberId AND ws.type = 'REGULAR'
                 GROUP BY ws.id, ws.name
                 ORDER BY ws.name DESC
                 """)
