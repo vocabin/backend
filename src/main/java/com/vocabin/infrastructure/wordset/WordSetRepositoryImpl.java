@@ -17,7 +17,7 @@ public class WordSetRepositoryImpl implements WordSetRepository {
 
     @Override
     public List<WordSet> findAllByMemberIdAndType(Long memberId, WordSetType type) {
-        return wordSetJpaRepository.findAllByMemberIdAndTypeOrderByNameDesc(memberId, type).stream()
+        return wordSetJpaRepository.findAllByMemberIdAndTypeOrderByCreatedAtDescIdDesc(memberId, type).stream()
                 .map(WordSetEntity::toModel)
                 .toList();
     }

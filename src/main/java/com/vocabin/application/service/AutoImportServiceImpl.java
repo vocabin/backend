@@ -24,6 +24,7 @@ import org.springframework.web.client.RestTemplate;
 
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.util.Comparator;
 import java.util.List;
 
 @Slf4j
@@ -107,8 +108,13 @@ public class AutoImportServiceImpl implements AutoImportService {
             return 0;
         }
 
+        // Create older classes first so the newest class gets the latest created_at (word sets list newest first)
+        List<QuizletSetSummary> oldestFirst = quizletSets.stream()
+                .sorted(Comparator.comparing(QuizletSetSummary::classDate, Comparator.nullsFirst(Comparator.naturalOrder())))
+                .toList();
+
         int imported = 0;
-        for (QuizletSetSummary summary : quizletSets) {
+        for (QuizletSetSummary summary : oldestFirst) {
             if (importedClassRepository.existsByMemberIdAndExternalClassId(memberId, summary.id())) continue;
 
             QuizletSetDetail detail = fetchQuizletSetDetail(accessToken, studentProfileId, summary.id());
