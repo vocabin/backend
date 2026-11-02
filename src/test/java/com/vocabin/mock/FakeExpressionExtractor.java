@@ -12,6 +12,11 @@ public class FakeExpressionExtractor implements ExpressionExtractor {
 
     private int calls = 0;
     private boolean failing = false;
+    private boolean empty = false;
+
+    public void returnEmptyResults() {
+        empty = true;
+    }
 
     public void failNextCalls() {
         failing = true;
@@ -26,6 +31,9 @@ public class FakeExpressionExtractor implements ExpressionExtractor {
         calls++;
         if (failing) {
             throw new ExpressionExtractionException("fake failure", null);
+        }
+        if (empty) {
+            return List.of();
         }
         return List.of(new ExpressionSuggestion(
                 "come across", "우연히 발견하다", "I came across an old photo.", "옛날 사진을 우연히 발견했다.",

@@ -67,6 +67,18 @@ class OpenAiExpressionExtractorTest {
     }
 
     @Test
+    void 단어_종류_VOCABULARY를_파싱한다() {
+        // given
+        String body = response("{\"items\":[{\"expression\":\"extraordinary\",\"meaningKo\":\"특별한, 비범한\",\"exampleEn\":\"It was an extraordinary day.\",\"exampleKo\":\"특별한 하루였다.\",\"type\":\"VOCABULARY\"}]}");
+
+        // when
+        List<ExpressionSuggestion> result = extractor.parse(body);
+
+        // then
+        assertThat(result).extracting(ExpressionSuggestion::type).containsExactly(SuggestionType.VOCABULARY);
+    }
+
+    @Test
     void 응답이_잘린_경우_실패로_처리한다() {
         // given
         String body = "{\"status\":\"incomplete\",\"incomplete_details\":{\"reason\":\"max_output_tokens\"},\"output\":[]}";
