@@ -32,6 +32,12 @@ davidsenglish:
   password: ${DAVIDSENGLISH_PASSWORD:}
   pocket-import-email: ${DAVIDSENGLISH_POCKET_IMPORT_EMAIL:}
 
+openai:
+  api-key: ${OPENAI_API_KEY:}
+  model: ${OPENAI_MODEL:gpt-6-luna}
+  allowed-email: ${OPENAI_ALLOWED_EMAIL:}
+  daily-limit: ${OPENAI_DAILY_LIMIT:30}
+
 springdoc:
   swagger-ui:
     path: /swagger-ui.html
