@@ -51,7 +51,9 @@ public class AiExpressionServiceImpl implements AiExpressionService {
         }
         EnglishSentence sentence = toSentence(sentenceText);
 
-        Optional<AiExplainLog> cached = logRepository.findLatestByMemberIdAndSentenceHash(memberId, sentence.cacheKey());
+        // An empty result is not reused, so the same sentence can be asked again (the call still counts toward the limit)
+        Optional<AiExplainLog> cached = logRepository.findLatestByMemberIdAndSentenceHash(memberId, sentence.cacheKey())
+                .filter(log -> !log.getSuggestions().isEmpty());
         if (cached.isPresent()) {
             return new Result(sentence.value(), cached.get().getSuggestions(), true, remainingToday(memberId));
         }

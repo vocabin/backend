@@ -99,6 +99,22 @@ class AiExpressionServiceTest {
     }
 
     @Test
+    void 빈_결과는_재사용하지_않고_같은_문장도_다시_AI에_물어본다() {
+        // given
+        AiExpressionServiceImpl service = service(ALLOWED_EMAIL, 30);
+        extractor.returnEmptyResults();
+        service.explain(ownerId, SENTENCE);
+
+        // when
+        AiExpressionService.Result again = service.explain(ownerId, SENTENCE);
+
+        // then
+        assertThat(again.cached()).isFalse();
+        assertThat(extractor.calls()).isEqualTo(2);
+        assertThat(again.remainingToday()).isEqualTo(28);
+    }
+
+    @Test
     void 하루_한도를_넘으면_429이고_AI를_호출하지_않는다() {
         // given
         AiExpressionServiceImpl service = service(ALLOWED_EMAIL, 2);

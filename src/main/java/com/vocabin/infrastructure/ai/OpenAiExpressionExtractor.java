@@ -32,20 +32,22 @@ public class OpenAiExpressionExtractor implements ExpressionExtractor {
     static final String INSTRUCTIONS = """
             너는 한국인 영어 학습자(중급)를 돕는 영어 해석 도우미다. 학습자가 영어 영상을 듣다가
             이해하지 못한 문장 하나를 준다. 그 문장에서 학습자가 모를 만한 숙어, 구동사, 유용한 표현,
-            학습 가치가 있는 문법 구조를 뽑아 한국어 뜻과 예문을 준다.
+            어려운 단어, 학습 가치가 있는 문법 구조를 뽑아 한국어 뜻과 예문을 준다.
 
             규칙:
             - 학습자가 귀로 듣고 직접 입력한 문장이라 오타나 잘못 들은 부분이 있을 수 있다. 명백한 오류는
               자연스러운 문장으로 고쳐서 해석한다.
             - I, you, is, are 같은 기본 주어/be동사, 중학교 수준의 쉬운 단어는 뽑지 않는다.
             - 원어민이 실제로 자주 쓰는 구어체 표현(예: kind of, I'm down, gonna)도 뽑는다.
+            - 중급 학습자가 모를 만한 단어(예: extraordinary, reluctant)는 type=VOCABULARY로 뽑는다.
+              단, 이미 뽑은 숙어나 표현 안에 들어 있는 단어는 따로 뽑지 않는다.
             - 완료 시제(현재완료/과거완료/완료진행), 가정법, 조동사 + have p.p., 분사구문처럼 학습 가치가 있는
               문법 구조는 type=GRAMMAR로 뽑고 meaningKo 앞에 구조 이름을 쓴다 (예: "가정법: 마치 ~인 것처럼").
             - expression은 기본형으로 정리한다 (came across → come across). 같은 표현을 겹쳐 뽑지 않는다.
             - meaningKo는 이 문장 맥락에 맞는 뜻을 30자 이내로 쓴다.
             - exampleEn은 그 표현을 쓴 새롭고 자연스러운 구어체 예문(15단어 이내), exampleKo는 그 해석이다.
             - 중요한 순서로 최대 6개. 뽑을 만한 것이 없으면 빈 배열을 준다.
-            - type: IDIOM(숙어), PHRASAL_VERB(구동사), EXPRESSION(유용한/구어체 표현), GRAMMAR(문법 구조)
+            - type: IDIOM(숙어), PHRASAL_VERB(구동사), EXPRESSION(유용한/구어체 표현), GRAMMAR(문법 구조), VOCABULARY(단어)
             """;
 
     private static final Map<String, Object> RESPONSE_SCHEMA = Map.of(
@@ -65,7 +67,7 @@ public class OpenAiExpressionExtractor implements ExpressionExtractor {
                                             "exampleEn", Map.of("type", "string"),
                                             "exampleKo", Map.of("type", "string"),
                                             "type", Map.of("type", "string",
-                                                    "enum", List.of("IDIOM", "PHRASAL_VERB", "EXPRESSION", "GRAMMAR"))
+                                                    "enum", List.of("IDIOM", "PHRASAL_VERB", "EXPRESSION", "GRAMMAR", "VOCABULARY"))
                                     )
                             )
                     )
@@ -133,7 +135,10 @@ public class OpenAiExpressionExtractor implements ExpressionExtractor {
                 if (!"message".equals(item.path("type").asText())) continue;
                 for (JsonNode content : item.path("content")) {
                     if ("output_text".equals(content.path("type").asText())) text = content.path("text").asText();
-                    if ("refusal".equals(content.path("type").asText())) return List.of();
+                    if ("refusal".equals(content.path("type").asText())) {
+                        log.warn("OpenAI refused to extract expressions: {}", content.path("refusal").asText());
+                        return List.of();
+                    }
                 }
             }
             if (text == null) {
