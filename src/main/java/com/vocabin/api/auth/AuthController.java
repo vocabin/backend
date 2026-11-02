@@ -14,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Duration;
 import java.util.Arrays;
@@ -54,12 +55,13 @@ public class AuthController {
         return ResponseEntity.ok(new AccessTokenResponse(tokenPair.accessToken()));
     }
 
-    @Operation(summary = "Access Token 재발급", description = "Refresh Token 쿠키로 새 Access Token을 발급합니다.")
+    @Operation(summary = "Access Token 재발급", description = "Refresh Token 쿠키로 새 Access Token을 발급하고, Refresh Token을 새 값으로 교체(Rotation)해 쿠키에 다시 설정합니다. 쿠키가 없거나 무효/만료면 401.")
     @PostMapping("/refresh")
-    public ResponseEntity<AccessTokenResponse> refresh(HttpServletRequest request) {
+    public ResponseEntity<AccessTokenResponse> refresh(HttpServletRequest request, HttpServletResponse response) {
         String refreshToken = extractRefreshTokenFromCookie(request);
-        String accessToken = authService.refresh(refreshToken);
-        return ResponseEntity.ok(new AccessTokenResponse(accessToken));
+        AuthService.TokenPair tokenPair = authService.refresh(refreshToken);
+        setRefreshTokenCookie(response, tokenPair.refreshToken());
+        return ResponseEntity.ok(new AccessTokenResponse(tokenPair.accessToken()));
     }
 
     @Operation(summary = "로그아웃", description = "Refresh Token을 무효화하고 쿠키를 삭제합니다.")
@@ -101,12 +103,12 @@ public class AuthController {
 
     private String extractRefreshTokenFromCookie(HttpServletRequest request) {
         if (request.getCookies() == null) {
-            throw new IllegalArgumentException("Refresh Token 쿠키가 없습니다.");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "인증이 만료되었습니다. 다시 로그인해 주세요.");
         }
         return Arrays.stream(request.getCookies())
                 .filter(c -> REFRESH_TOKEN_COOKIE.equals(c.getName()))
                 .map(Cookie::getValue)
                 .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("Refresh Token 쿠키가 없습니다."));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "인증이 만료되었습니다. 다시 로그인해 주세요."));
     }
 }

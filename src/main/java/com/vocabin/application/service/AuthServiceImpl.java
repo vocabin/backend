@@ -12,9 +12,11 @@ import com.vocabin.infrastructure.member.RefreshTokenEntity;
 import com.vocabin.infrastructure.member.RefreshTokenJpaRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -65,21 +67,19 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @Transactional
-    public String refresh(String refreshToken) {
+    public TokenPair refresh(String refreshToken) {
         String tokenHash = sha256(refreshToken);
 
+        // Invalid and expired tokens get the same 401 so the client simply sends the user to login
         RefreshTokenEntity entity = refreshTokenJpaRepository.findByTokenHash(tokenHash)
-                .orElseThrow(() -> new IllegalArgumentException("유효하지 않은 Refresh Token입니다."));
+                .filter(found -> !found.getExpiresAt().isBefore(clockHolder.now()))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "인증이 만료되었습니다. 다시 로그인해 주세요."));
 
-        if (entity.getExpiresAt().isBefore(clockHolder.now())) {
-            throw new IllegalArgumentException("만료된 Refresh Token입니다.");
-        }
-
-        // Rotation: 새 토큰 발급 후 기존 토큰 교체
+        // Rotation: issue a new refresh token, retire the old one, and hand the new one back to the caller
         String newRawToken = UUID.randomUUID().toString();
         entity.rotate(sha256(newRawToken), clockHolder.now().plusDays(refreshTokenExpiryDays));
 
-        return jwtProvider.generateAccessToken(entity.getMember().getId());
+        return new TokenPair(jwtProvider.generateAccessToken(entity.getMember().getId()), newRawToken);
     }
 
     @Override
