@@ -34,27 +34,32 @@ class OpenAiExpressionExtractorTest {
     }
 
     @Test
-    void 응답의_output_text에서_표현_목록을_파싱한다() {
+    void 응답에서_표현과_여러_뜻을_파싱한다() {
         // given
         String body = response("""
-                {"items":[{"expression":"have been meaning to","meaningKo":"현재완료진행: ~하려고 계속 생각해 왔다",
-                "exampleEn":"I've been meaning to call you.","exampleKo":"너한테 전화하려고 계속 생각했어.","type":"GRAMMAR"}]}""");
+                {"items":[{"expression":"go through","type":"PHRASAL_VERB","meanings":[
+                {"meaningKo":"겪다","exampleEn":"We went through a lot.","exampleKo":"우리는 많은 일을 겪었어.","fromSentence":true},
+                {"meaningKo":"살펴보다","exampleEn":"Let's go through the list.","exampleKo":"목록을 살펴보자.","fromSentence":false}]}]}""");
 
         // when
         List<ExpressionSuggestion> result = extractor.parse(body);
 
         // then
-        assertThat(result).containsExactly(new ExpressionSuggestion(
-                "have been meaning to", "현재완료진행: ~하려고 계속 생각해 왔다",
-                "I've been meaning to call you.", "너한테 전화하려고 계속 생각했어.", SuggestionType.GRAMMAR));
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).expression()).isEqualTo("go through");
+        assertThat(result.get(0).type()).isEqualTo(SuggestionType.PHRASAL_VERB);
+        assertThat(result.get(0).meanings()).extracting(ExpressionSuggestion.Meaning::meaningKo).containsExactly("겪다", "살펴보다");
+        assertThat(result.get(0).meanings().get(0).fromSentence()).isTrue();
     }
 
     @Test
-    void 최대_6개까지만_받고_빈_표현은_건너뛴다() {
+    void 표현은_최대_6개_뜻은_최대_4개까지만_받고_뜻이_없는_표현은_건너뛴다() {
         // given
-        StringBuilder items = new StringBuilder("{\"expression\":\" \",\"meaningKo\":\"\",\"exampleEn\":\"\",\"exampleKo\":\"\",\"type\":\"IDIOM\"}");
+        String meaning = "{\"meaningKo\":\"m\",\"exampleEn\":\"x\",\"exampleKo\":\"y\",\"fromSentence\":false}";
+        String fiveMeanings = String.join(",", meaning, meaning, meaning, meaning, meaning);
+        StringBuilder items = new StringBuilder("{\"expression\":\"no-meaning\",\"type\":\"IDIOM\",\"meanings\":[]}");
         for (int i = 0; i < 8; i++) {
-            items.append(",{\"expression\":\"e").append(i).append("\",\"meaningKo\":\"m\",\"exampleEn\":\"x\",\"exampleKo\":\"y\",\"type\":\"IDIOM\"}");
+            items.append(",{\"expression\":\"e").append(i).append("\",\"type\":\"IDIOM\",\"meanings\":[").append(fiveMeanings).append("]}");
         }
         String body = response("{\"items\":[" + items + "]}");
 
@@ -64,12 +69,13 @@ class OpenAiExpressionExtractorTest {
         // then
         assertThat(result).hasSize(6);
         assertThat(result.get(0).expression()).isEqualTo("e0");
+        assertThat(result.get(0).meanings()).hasSize(4);
     }
 
     @Test
     void 단어_종류_VOCABULARY를_파싱한다() {
         // given
-        String body = response("{\"items\":[{\"expression\":\"extraordinary\",\"meaningKo\":\"특별한, 비범한\",\"exampleEn\":\"It was an extraordinary day.\",\"exampleKo\":\"특별한 하루였다.\",\"type\":\"VOCABULARY\"}]}");
+        String body = response("{\"items\":[{\"expression\":\"extraordinary\",\"type\":\"VOCABULARY\",\"meanings\":[{\"meaningKo\":\"특별한\",\"exampleEn\":\"It was an extraordinary event.\",\"exampleKo\":\"특별한 일이었다.\",\"fromSentence\":true}]}]}");
 
         // when
         List<ExpressionSuggestion> result = extractor.parse(body);
