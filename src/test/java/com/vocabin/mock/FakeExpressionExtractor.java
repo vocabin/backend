@@ -13,13 +13,18 @@ public class FakeExpressionExtractor implements ExpressionExtractor {
     private int calls = 0;
     private boolean failing = false;
     private boolean empty = false;
+    private String promptVersion = "test-v1";
+
+    public void failNextCalls() {
+        failing = true;
+    }
 
     public void returnEmptyResults() {
         empty = true;
     }
 
-    public void failNextCalls() {
-        failing = true;
+    public void changePromptVersion(String version) {
+        promptVersion = version;
     }
 
     public int calls() {
@@ -35,8 +40,13 @@ public class FakeExpressionExtractor implements ExpressionExtractor {
         if (empty) {
             return List.of();
         }
-        return List.of(new ExpressionSuggestion(
-                "come across", "우연히 발견하다", "I came across an old photo.", "옛날 사진을 우연히 발견했다.",
-                SuggestionType.PHRASAL_VERB));
+        return List.of(new ExpressionSuggestion("come across", SuggestionType.PHRASAL_VERB, List.of(
+                new ExpressionSuggestion.Meaning("우연히 만나다", sentence.value(), "어제 옛 친구를 우연히 만났다.", true),
+                new ExpressionSuggestion.Meaning("~한 인상을 주다", "He comes across as shy.", "그는 수줍어 보여.", false))));
+    }
+
+    @Override
+    public String promptVersion() {
+        return promptVersion;
     }
 }

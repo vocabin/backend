@@ -27,14 +27,17 @@ public class OpenAiExpressionExtractor implements ExpressionExtractor {
 
     private static final String RESPONSES_URL = "https://api.openai.com/v1/responses";
     private static final int MAX_SUGGESTIONS = 6;
-    private static final int MAX_OUTPUT_TOKENS = 2000;
+    private static final int MAX_MEANINGS = 4;
+    private static final int MAX_OUTPUT_TOKENS = 3000;
+
+    static final String PROMPT_VERSION = "v2-multi-meaning";
 
     static final String INSTRUCTIONS = """
             너는 한국인 영어 학습자(중급)를 돕는 영어 해석 도우미다. 학습자가 영어 영상을 듣다가
             이해하지 못한 문장 하나를 준다. 그 문장에서 학습자가 모를 만한 숙어, 구동사, 유용한 표현,
             어려운 단어, 학습 가치가 있는 문법 구조를 뽑아 한국어 뜻과 예문을 준다.
 
-            규칙:
+            표현 고르는 규칙:
             - 학습자가 귀로 듣고 직접 입력한 문장이라 오타나 잘못 들은 부분이 있을 수 있다. 명백한 오류는
               자연스러운 문장으로 고쳐서 해석한다.
             - I, you, is, are 같은 기본 주어/be동사, 중학교 수준의 쉬운 단어는 뽑지 않는다.
@@ -44,11 +47,30 @@ public class OpenAiExpressionExtractor implements ExpressionExtractor {
             - 완료 시제(현재완료/과거완료/완료진행), 가정법, 조동사 + have p.p., 분사구문처럼 학습 가치가 있는
               문법 구조는 type=GRAMMAR로 뽑고 meaningKo 앞에 구조 이름을 쓴다 (예: "가정법: 마치 ~인 것처럼").
             - expression은 기본형으로 정리한다 (came across → come across). 같은 표현을 겹쳐 뽑지 않는다.
-            - meaningKo는 이 문장 맥락에 맞는 뜻을 30자 이내로 쓴다.
-            - exampleEn은 그 표현을 쓴 새롭고 자연스러운 구어체 예문(15단어 이내), exampleKo는 그 해석이다.
             - 중요한 순서로 최대 6개. 뽑을 만한 것이 없으면 빈 배열을 준다.
+
+            뜻과 예문 규칙 (meanings):
+            - meanings의 첫 번째 항목은 반드시 이 문장에서 쓰인 뜻이다. fromSentence=true로 하고,
+              exampleEn에는 학습자가 입력한 문장을 그대로 쓴다 (명백한 오타만 고친다). exampleKo는 그 문장의 해석이다.
+              학습자가 영상에서 본 문장을 예문으로 봐야 기억하기 쉽기 때문이다.
+            - 그 표현이 다른 뜻으로도 흔히 쓰이면, 자주 쓰는 순서로 최대 3개의 뜻을 더 추가한다 (fromSentence=false).
+              예: go through → 겪다 / 살펴보다 / 통과하다. 각 뜻마다 짧고 자연스러운 구어체 예문(15단어 이내)과 해석을 준다.
+            - 뜻이 하나뿐인 표현은 meanings에 1개만 준다. 억지로 뜻을 늘리지 않는다.
+            - meaningKo는 각각 20자 이내로 짧게 쓴다.
             - type: IDIOM(숙어), PHRASAL_VERB(구동사), EXPRESSION(유용한/구어체 표현), GRAMMAR(문법 구조), VOCABULARY(단어)
             """;
+
+    private static final Map<String, Object> MEANING_SCHEMA = Map.of(
+            "type", "object",
+            "additionalProperties", false,
+            "required", List.of("meaningKo", "exampleEn", "exampleKo", "fromSentence"),
+            "properties", Map.of(
+                    "meaningKo", Map.of("type", "string"),
+                    "exampleEn", Map.of("type", "string"),
+                    "exampleKo", Map.of("type", "string"),
+                    "fromSentence", Map.of("type", "boolean")
+            )
+    );
 
     private static final Map<String, Object> RESPONSE_SCHEMA = Map.of(
             "type", "object",
@@ -60,14 +82,12 @@ public class OpenAiExpressionExtractor implements ExpressionExtractor {
                             "items", Map.of(
                                     "type", "object",
                                     "additionalProperties", false,
-                                    "required", List.of("expression", "meaningKo", "exampleEn", "exampleKo", "type"),
+                                    "required", List.of("expression", "type", "meanings"),
                                     "properties", Map.of(
                                             "expression", Map.of("type", "string"),
-                                            "meaningKo", Map.of("type", "string"),
-                                            "exampleEn", Map.of("type", "string"),
-                                            "exampleKo", Map.of("type", "string"),
                                             "type", Map.of("type", "string",
-                                                    "enum", List.of("IDIOM", "PHRASAL_VERB", "EXPRESSION", "GRAMMAR", "VOCABULARY"))
+                                                    "enum", List.of("IDIOM", "PHRASAL_VERB", "EXPRESSION", "GRAMMAR", "VOCABULARY")),
+                                            "meanings", Map.of("type", "array", "items", MEANING_SCHEMA)
                                     )
                             )
                     )
@@ -124,6 +144,11 @@ public class OpenAiExpressionExtractor implements ExpressionExtractor {
         }
     }
 
+    @Override
+    public String promptVersion() {
+        return PROMPT_VERSION;
+    }
+
     List<ExpressionSuggestion> parse(String responseBody) {
         try {
             JsonNode root = objectMapper.readTree(responseBody);
@@ -148,13 +173,19 @@ public class OpenAiExpressionExtractor implements ExpressionExtractor {
             List<ExpressionSuggestion> suggestions = new ArrayList<>();
             for (JsonNode node : objectMapper.readTree(text).path("items")) {
                 String expression = node.path("expression").asText("").trim();
-                if (expression.isEmpty()) continue;
-                suggestions.add(new ExpressionSuggestion(
-                        expression,
-                        node.path("meaningKo").asText("").trim(),
-                        node.path("exampleEn").asText("").trim(),
-                        node.path("exampleKo").asText("").trim(),
-                        toType(node.path("type").asText())));
+                List<ExpressionSuggestion.Meaning> meanings = new ArrayList<>();
+                for (JsonNode m : node.path("meanings")) {
+                    String meaningKo = m.path("meaningKo").asText("").trim();
+                    if (meaningKo.isEmpty()) continue;
+                    meanings.add(new ExpressionSuggestion.Meaning(
+                            meaningKo,
+                            m.path("exampleEn").asText("").trim(),
+                            m.path("exampleKo").asText("").trim(),
+                            m.path("fromSentence").asBoolean(false)));
+                    if (meanings.size() == MAX_MEANINGS) break;
+                }
+                if (expression.isEmpty() || meanings.isEmpty()) continue;
+                suggestions.add(new ExpressionSuggestion(expression, toType(node.path("type").asText()), meanings));
                 if (suggestions.size() == MAX_SUGGESTIONS) break;
             }
             return suggestions;

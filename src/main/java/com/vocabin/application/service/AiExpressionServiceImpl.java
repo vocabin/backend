@@ -50,9 +50,10 @@ public class AiExpressionServiceImpl implements AiExpressionService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "AI 기능을 사용할 수 없는 계정입니다.");
         }
         EnglishSentence sentence = toSentence(sentenceText);
+        String cacheKey = sentence.cacheKey(expressionExtractor.promptVersion());
 
         // An empty result is not reused, so the same sentence can be asked again (the call still counts toward the limit)
-        Optional<AiExplainLog> cached = logRepository.findLatestByMemberIdAndSentenceHash(memberId, sentence.cacheKey())
+        Optional<AiExplainLog> cached = logRepository.findLatestByMemberIdAndSentenceHash(memberId, cacheKey)
                 .filter(log -> !log.getSuggestions().isEmpty());
         if (cached.isPresent()) {
             return new Result(sentence.value(), cached.get().getSuggestions(), true, remainingToday(memberId));
@@ -69,7 +70,7 @@ public class AiExpressionServiceImpl implements AiExpressionService {
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "AI 응답을 받지 못했습니다.");
         }
 
-        logRepository.save(AiExplainLog.record(memberId, sentence, suggestions, clockHolder));
+        logRepository.save(AiExplainLog.record(memberId, cacheKey, sentence, suggestions, clockHolder));
         return new Result(sentence.value(), suggestions, false, remainingToday(memberId));
     }
 

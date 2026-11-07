@@ -16,14 +16,24 @@ public record ExplainResponse(
 ) {
     @Schema(description = "추천 표현")
     public record Suggestion(
-            @Schema(description = "표현 (기본형)", example = "have been meaning to") String expression,
-            @Schema(description = "한국어 뜻", example = "현재완료진행: ~하려고 계속 생각해 왔다") String meaningKo,
-            @Schema(description = "영어 예문") String exampleEn,
-            @Schema(description = "예문 해석") String exampleKo,
-            @Schema(description = "종류: IDIOM, PHRASAL_VERB, EXPRESSION, GRAMMAR") SuggestionType type
+            @Schema(description = "표현 (기본형)", example = "go through") String expression,
+            @Schema(description = "종류: IDIOM, PHRASAL_VERB, EXPRESSION, GRAMMAR, VOCABULARY") SuggestionType type,
+            @Schema(description = "뜻 목록 (첫 번째가 이 문장에서 쓰인 뜻)") List<Meaning> meanings
     ) {
         static Suggestion from(ExpressionSuggestion s) {
-            return new Suggestion(s.expression(), s.meaningKo(), s.exampleEn(), s.exampleKo(), s.type());
+            return new Suggestion(s.expression(), s.type(), s.meanings().stream().map(Meaning::from).toList());
+        }
+    }
+
+    @Schema(description = "뜻과 예문")
+    public record Meaning(
+            @Schema(description = "한국어 뜻", example = "겪다") String meaningKo,
+            @Schema(description = "영어 예문 (fromSentence면 입력한 문장)") String exampleEn,
+            @Schema(description = "예문 해석") String exampleKo,
+            @Schema(description = "입력한 문장에서 쓰인 뜻인지") boolean fromSentence
+    ) {
+        static Meaning from(ExpressionSuggestion.Meaning m) {
+            return new Meaning(m.meaningKo(), m.exampleEn(), m.exampleKo(), m.fromSentence());
         }
     }
 

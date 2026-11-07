@@ -21,11 +21,11 @@ public record EnglishSentence(String value) {
         }
     }
 
-    // Same sentence regardless of case or extra spaces -> same cache key
-    public String cacheKey() {
+    // Same sentence regardless of case or extra spaces -> same key; the namespace separates results of different prompt versions
+    public String cacheKey(String namespace) {
         try {
             byte[] digest = MessageDigest.getInstance("SHA-256")
-                    .digest(value.toLowerCase(Locale.ROOT).getBytes(StandardCharsets.UTF_8));
+                    .digest((namespace + ":" + value.toLowerCase(Locale.ROOT)).getBytes(StandardCharsets.UTF_8));
             return HexFormat.of().formatHex(digest);
         } catch (NoSuchAlgorithmException e) {
             throw new IllegalStateException(e);

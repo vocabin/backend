@@ -115,6 +115,35 @@ class AiExpressionServiceTest {
     }
 
     @Test
+    void 첫_번째_뜻은_입력한_문장을_예문으로_가진다() {
+        // given
+        AiExpressionServiceImpl service = service(ALLOWED_EMAIL, 30);
+
+        // when
+        AiExpressionService.Result result = service.explain(ownerId, SENTENCE);
+
+        // then
+        var first = result.suggestions().get(0).meanings().get(0);
+        assertThat(first.fromSentence()).isTrue();
+        assertThat(first.exampleEn()).isEqualTo(SENTENCE);
+    }
+
+    @Test
+    void 프롬프트_버전이_바뀌면_예전_결과를_재사용하지_않는다() {
+        // given
+        AiExpressionServiceImpl service = service(ALLOWED_EMAIL, 30);
+        service.explain(ownerId, SENTENCE);
+        extractor.changePromptVersion("test-v2");
+
+        // when
+        AiExpressionService.Result result = service.explain(ownerId, SENTENCE);
+
+        // then
+        assertThat(result.cached()).isFalse();
+        assertThat(extractor.calls()).isEqualTo(2);
+    }
+
+    @Test
     void 하루_한도를_넘으면_429이고_AI를_호출하지_않는다() {
         // given
         AiExpressionServiceImpl service = service(ALLOWED_EMAIL, 2);

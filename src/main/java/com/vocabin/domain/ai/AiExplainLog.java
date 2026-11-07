@@ -19,11 +19,11 @@ public class AiExplainLog {
     private final List<ExpressionSuggestion> suggestions;
     private final LocalDateTime createdAt;
 
-    public static AiExplainLog record(Long memberId, EnglishSentence sentence, List<ExpressionSuggestion> suggestions,
-                                      ClockHolder clockHolder) {
+    public static AiExplainLog record(Long memberId, String cacheKey, EnglishSentence sentence,
+                                      List<ExpressionSuggestion> suggestions, ClockHolder clockHolder) {
         return AiExplainLog.builder()
                 .memberId(memberId)
-                .sentenceHash(sentence.cacheKey())
+                .sentenceHash(cacheKey)
                 .sentence(sentence.value())
                 .suggestions(List.copyOf(suggestions))
                 .createdAt(clockHolder.now())
