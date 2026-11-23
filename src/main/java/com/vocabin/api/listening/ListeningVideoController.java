@@ -1,6 +1,7 @@
 package com.vocabin.api.listening;
 
 import com.vocabin.application.service.ListeningVideoService;
+import com.vocabin.application.service.TranscriptService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -17,6 +18,7 @@ import java.util.List;
 public class ListeningVideoController {
 
     private final ListeningVideoService listeningVideoService;
+    private final TranscriptService transcriptService;
 
     @Operation(summary = "리스닝 영상 목록 조회", description = "최근에 연 영상부터 반환합니다.")
     @GetMapping
@@ -52,5 +54,12 @@ public class ListeningVideoController {
             @RequestAttribute("memberId") Long memberId,
             @PathVariable String videoId) {
         listeningVideoService.remove(memberId, videoId);
+    }
+
+    @Operation(summary = "영상 영어 자막 조회",
+            description = "영상마다 처음 한 번만 유튜브에서 영어 자막(수동 → 자동 생성 순)을 가져와 저장하고 이후엔 저장본을 반환합니다. 영어 자막이 없으면 available=false. (503: 가져오기 실패, 다음 요청 때 재시도)")
+    @GetMapping("/{videoId}/transcript")
+    public TranscriptResponse getTranscript(@PathVariable String videoId) {
+        return TranscriptResponse.from(transcriptService.getTranscript(videoId));
     }
 }

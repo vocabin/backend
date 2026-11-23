@@ -38,6 +38,9 @@ openai:
   allowed-email: ${OPENAI_ALLOWED_EMAIL:}
   daily-limit: ${OPENAI_DAILY_LIMIT:30}
 
+transcript:
+  python-command: ${TRANSCRIPT_PYTHON:python3}
+
 springdoc:
   swagger-ui:
     path: /swagger-ui.html
