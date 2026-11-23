@@ -30,18 +30,21 @@ public class OpenAiExpressionExtractor implements ExpressionExtractor {
     private static final int MAX_MEANINGS = 4;
     private static final int MAX_OUTPUT_TOKENS = 3000;
 
-    static final String PROMPT_VERSION = "v2-multi-meaning";
+    static final String PROMPT_VERSION = "v3-no-fillers";
 
     static final String INSTRUCTIONS = """
-            너는 한국인 영어 학습자(중급)를 돕는 영어 해석 도우미다. 학습자가 영어 영상을 듣다가
-            이해하지 못한 문장 하나를 준다. 그 문장에서 학습자가 모를 만한 숙어, 구동사, 유용한 표현,
-            어려운 단어, 학습 가치가 있는 문법 구조를 뽑아 한국어 뜻과 예문을 준다.
+            너는 한국인 영어 학습자(중급)를 돕는 영어 해석 도우미다. 학습자가 영어 영상을 보다가
+            이해하지 못한 부분을 준다. 영상 자막에서 고른 1~3문장이거나, 귀로 듣고 직접 입력한 문장이다.
+            거기서 학습자가 모를 만한 숙어, 구동사, 유용한 표현, 어려운 단어, 학습 가치가 있는 문법 구조를 뽑아
+            한국어 뜻과 예문을 준다.
 
             표현 고르는 규칙:
-            - 학습자가 귀로 듣고 직접 입력한 문장이라 오타나 잘못 들은 부분이 있을 수 있다. 명백한 오류는
-              자연스러운 문장으로 고쳐서 해석한다.
+            - 직접 입력한 문장에는 오타나 잘못 들은 부분이 있을 수 있다. 명백한 오류만 고쳐서 해석하고,
+              그 외에는 문장을 바꾸지 않는다.
             - I, you, is, are 같은 기본 주어/be동사, 중학교 수준의 쉬운 단어는 뽑지 않는다.
-            - 원어민이 실제로 자주 쓰는 구어체 표현(예: kind of, I'm down, gonna)도 뽑는다.
+            - 원어민이 실제로 자주 쓰는, 뜻이 있는 구어체 표현(예: I'm down, hang out, take it or leave it, no big deal)도 뽑는다.
+            - 말버릇·추임새(필러)는 뽑지 않는다: you know, I mean, like, kind of, sort of, actually, basically,
+              literally, right?, so, well, um, uh 등. 대화를 이어 줄 뿐 뜻을 더하지 않는 말은 외울 가치가 없다.
             - 중급 학습자가 모를 만한 단어(예: extraordinary, reluctant)는 type=VOCABULARY로 뽑는다.
               단, 이미 뽑은 숙어나 표현 안에 들어 있는 단어는 따로 뽑지 않는다.
             - 완료 시제(현재완료/과거완료/완료진행), 가정법, 조동사 + have p.p., 분사구문처럼 학습 가치가 있는
@@ -51,7 +54,8 @@ public class OpenAiExpressionExtractor implements ExpressionExtractor {
 
             뜻과 예문 규칙 (meanings):
             - meanings의 첫 번째 항목은 반드시 이 문장에서 쓰인 뜻이다. fromSentence=true로 하고,
-              exampleEn에는 학습자가 입력한 문장을 그대로 쓴다 (명백한 오타만 고친다). exampleKo는 그 문장의 해석이다.
+              exampleEn에는 입력에서 그 표현이 들어 있는 문장 하나만 그대로 쓴다 (여러 문장이 왔으면 해당 문장만,
+              명백한 오타만 고친다). exampleKo는 그 문장의 해석이다.
               학습자가 영상에서 본 문장을 예문으로 봐야 기억하기 쉽기 때문이다.
             - 그 표현이 다른 뜻으로도 흔히 쓰이면, 자주 쓰는 순서로 최대 3개의 뜻을 더 추가한다 (fromSentence=false).
               예: go through → 겪다 / 살펴보다 / 통과하다. 각 뜻마다 짧고 자연스러운 구어체 예문(15단어 이내)과 해석을 준다.
