@@ -52,6 +52,10 @@ public class VideoTranscript {
         return !lines.isEmpty();
     }
 
+    public List<TranscriptSentence> sentences() {
+        return TranscriptSentences.from(lines);
+    }
+
     // Captions wrap long sentences onto two lines; join them into one
     private static String clean(String text) {
         return text == null ? "" : text.replace('\n', ' ').replaceAll("\\s+", " ").trim();
